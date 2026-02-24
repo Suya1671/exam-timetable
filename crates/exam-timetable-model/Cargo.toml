@@ -1,0 +1,11 @@
+[package]
+name = "exam-timetable-model"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+exam-timetable-hack = { version = "0.1", path = "../exam-timetable-hack" }
+serde = { version = "1.0.228", features = ["derive"] }
+time = { version = "0.3.47", features = ["serde"] }

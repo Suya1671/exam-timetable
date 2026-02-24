@@ -1,0 +1,12 @@
+[package]
+name = "exam-timetable-solver"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+exam-timetable-model = { version = "0.1.0", path = "../exam-timetable-model" }
+z3 = "0.19.10"
+exam-timetable-hack = { version = "0.1", path = "../exam-timetable-hack" }
+thiserror = "2.0.18"
