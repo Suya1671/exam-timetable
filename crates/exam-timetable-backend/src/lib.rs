@@ -1,8 +1,11 @@
 use std::collections::HashMap;
+use std::hash::Hash;
 
-use exam_timetable_model::{ExamId, TimeslotId};
+use exam_timetable_model::{ExamId, StudentId, TimeslotId};
 use exam_timetable_solver::{ExamScheduler, SolverError};
-use sqlx::{query, query_scalar, Sqlite, SqlitePool, Transaction};
+use itertools::Itertools;
+use sqlx::{query, query_scalar, Sqlite, Transaction};
+use time::Date;
 
 #[derive(Debug, thiserror::Error)]
 pub enum SolveError {
@@ -23,7 +26,30 @@ pub async fn solve(
         .fetch_one(&mut *txn)
         .await?;
 
-    let scheduler = ExamScheduler::new(&exam_ids, n_timeslots);
+    let mut scheduler = ExamScheduler::new(&exam_ids, n_timeslots);
+
+    // Retrieve every exam that each student is enrolled in.
+    // A student may be enrolled in multiple subjects, and each subject can have multiple exams.
+    let exams_per_student = query!(
+        "
+        SELECT
+            es.student_id as 'student_id: StudentId',
+            e.id AS 'exam_id: ExamId'
+        FROM enrolled_students AS es
+        JOIN exams AS e
+            ON es.subject_id = e.subject_id
+        "
+    )
+    .fetch_all(&mut *txn)
+    .await?
+    .into_iter()
+    .into_grouping_map_by(|row| row.student_id)
+    .fold(Vec::new(), |mut acc, _student, row| {
+        acc.push(row.exam_id);
+        acc
+    });
+
+    scheduler.setup_students(&exams_per_student);
 
     let results = scheduler.solve()?;
 
@@ -34,34 +60,51 @@ pub async fn solve(
 pub async fn group_by_weekday(
     mut txn: Transaction<'_, Sqlite>,
 ) -> Result<HashMap<time::Weekday, Vec<TimeslotId>>, SolveError> {
-    let timeslots = query!("SELECT id, date as 'date: time::Date', slot FROM timeslots",)
-        .fetch_all(&mut *txn)
-        .await?;
-
-    let chunks = timeslots
-        .chunk_by(|a, b| a.date.weekday() == b.date.weekday())
-        .map(|group| {
-            let weekday = group[0].date.weekday();
-            let timeslot_ids = group.iter().map(|ts| ts.id).collect();
-            (weekday, timeslot_ids)
-        })
-        .collect();
-
-    Ok(chunks)
+    let timeslots = fetch_timeslots(&mut txn).await?;
+    Ok(group_timeslots_by(timeslots, |ts| ts.date.weekday()))
 }
 
 /// Groups timeslots by the calendar date
 pub async fn group_days(
     mut txn: Transaction<'_, Sqlite>,
-) -> Result<Vec<Vec<TimeslotId>>, SolveError> {
-    let timeslots = query!("SELECT id, date as 'date: time::Date', slot FROM timeslots",)
-        .fetch_all(&mut *txn)
-        .await?;
+) -> Result<HashMap<Date, Vec<TimeslotId>>, SolveError> {
+    let timeslots = fetch_timeslots(&mut txn).await?;
+    Ok(group_timeslots_by(timeslots, |ts| ts.date))
+}
 
-    let chunks = timeslots
-        .chunk_by(|a, b| a.date == b.date)
-        .map(|group| group.iter().map(|ts| ts.id).collect())
-        .collect();
+struct TimeslotRow {
+    id: TimeslotId,
+    date: Date,
+}
 
-    Ok(chunks)
+async fn fetch_timeslots(
+    txn: &mut Transaction<'_, Sqlite>,
+) -> Result<Vec<TimeslotRow>, sqlx::Error> {
+    let rows = query!(
+        "SELECT id as 'id: TimeslotId', date as 'date: time::Date' FROM timeslots ORDER BY date, slot",
+    )
+    .fetch_all(&mut **txn)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|row| TimeslotRow {
+            id: row.id,
+            date: row.date,
+        })
+        .collect())
+}
+
+fn group_timeslots_by<K: Eq + Hash>(
+    timeslots: Vec<TimeslotRow>,
+    key_fn: impl Fn(&TimeslotRow) -> K,
+) -> HashMap<K, Vec<TimeslotId>> {
+    let mut grouped = HashMap::new();
+    for timeslot in timeslots {
+        grouped
+            .entry(key_fn(&timeslot))
+            .or_insert_with(Vec::new)
+            .push(timeslot.id);
+    }
+    grouped
 }

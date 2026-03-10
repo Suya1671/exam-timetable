@@ -1,4 +1,8 @@
+mod constraint_tracking;
+mod diagnostics;
 mod int_extensions;
+
+pub use crate::diagnostics::{ConstraintError, SolverDebugInfo};
 
 use std::collections::HashMap;
 
@@ -8,12 +12,8 @@ use z3::{
     Optimize, SatResult,
 };
 
+use crate::constraint_tracking::ConstraintTracker;
 use crate::int_extensions::IntExtensions;
-
-pub struct SchedulerStudent {
-    id: StudentId,
-    exams: Vec<ExamId>,
-}
 
 // implementation notes
 // - Always ensure that timeslots are ordered by their date and then by slot number to ensure consistent variable indexing
@@ -30,6 +30,11 @@ pub struct ExamScheduler {
     ///
     /// assignment\[exam_id] = timeslot_id
     assignment: HashMap<ExamId, Int>,
+
+    /// Tracks the constraints that have been added to the optimizer,
+    ///
+    /// This is used to provide better diagnostics in case of infeasibility or other errors
+    tracker: ConstraintTracker,
 }
 
 impl ExamScheduler {
@@ -52,18 +57,36 @@ impl ExamScheduler {
             .map(|exam| {
                 let var = Int::fresh_const(&format!("exam_{}", exam));
 
-                // Domain constraint: each exam must be assigned to a valid timeslot (i.e. within index bounds)
-                optimizer.assert(&var.ge(Int::from_i64(0)));
-                optimizer.assert(&var.lt(Int::from_i64(n_timeslots)));
-
                 (*exam, var)
             })
-            .collect();
+            .collect::<HashMap<_, _>>();
 
-        Self {
+        let mut scheduler = Self {
             optimizer,
             assignment,
+            tracker: ConstraintTracker::new(),
+        };
+
+        for exam in exam_ids {
+            let exam_var = scheduler.assignment.get(exam).unwrap();
+
+            // Domain constraint: each exam must be assigned to a valid timeslot (i.e. within index bounds)
+            scheduler.tracker.assert_hard(
+                &scheduler.optimizer,
+                &exam_var.ge(Int::from_i64(0)),
+                ConstraintError::DomainLowerBound { exam: *exam },
+            );
+            scheduler.tracker.assert_hard(
+                &scheduler.optimizer,
+                &exam_var.lt(Int::from_i64(n_timeslots)),
+                ConstraintError::DomainUpperBound {
+                    exam: *exam,
+                    n_timeslots,
+                },
+            );
         }
+
+        scheduler
     }
 
     /// Add allowed timeslots for an exam
@@ -78,16 +101,23 @@ impl ExamScheduler {
     /// This can be used for hard-limiting certain exams to specific timeslots,
     /// e.g. if an exam must be scheduled in the morning, then we can only allow timeslots that are in the morning
     /// or for geography, where paper 1 and 2 must be on the same day
-    pub fn add_allowed_timeslots(&self, exam: ExamId, allowed_timeslots: &[TimeslotId]) {
+    pub fn add_allowed_timeslots(&mut self, exam: ExamId, allowed_timeslots: &[TimeslotId]) {
         let exam_timeslot = self.assignment.get(&exam).unwrap();
 
         // Constraint: the exam must be scheduled in one of the allowed timeslots
-        self.optimizer.assert(&Bool::or(
-            &allowed_timeslots
-                .iter()
-                .map(|timeslot| exam_timeslot.eq(Int::from_i64(*timeslot)))
-                .collect::<Box<[_]>>(),
-        ));
+        self.tracker.assert_hard(
+            &self.optimizer,
+            &Bool::or(
+                &allowed_timeslots
+                    .iter()
+                    .map(|timeslot| exam_timeslot.eq(Int::from_i64(*timeslot)))
+                    .collect::<Box<[_]>>(),
+            ),
+            ConstraintError::AllowedTimeslots {
+                exam,
+                timeslots: allowed_timeslots.to_vec(),
+            },
+        );
     }
 
     /// Add disallowed timeslots for an exam
@@ -98,13 +128,19 @@ impl ExamScheduler {
     ///
     /// # Constraints setup
     /// - The exam must not be scheduled in any of the disallowed timeslots
-    pub fn add_disallowed_timeslots(&self, exam: ExamId, disallowed_timeslots: &[TimeslotId]) {
+    pub fn add_disallowed_timeslots(&mut self, exam: ExamId, disallowed_timeslots: &[TimeslotId]) {
         let exam_timeslot = self.assignment.get(&exam).unwrap();
 
         for timeslot in disallowed_timeslots {
             // Constraint: the exam must not be scheduled in any of the disallowed timeslots
-            self.optimizer
-                .assert(&exam_timeslot.eq(Int::from_i64(*timeslot)).not());
+            self.tracker.assert_hard(
+                &self.optimizer,
+                &exam_timeslot.eq(Int::from_i64(*timeslot)).not(),
+                ConstraintError::DisallowedTimeslot {
+                    exam,
+                    timeslot: *timeslot,
+                },
+            );
         }
     }
 
@@ -137,16 +173,16 @@ impl ExamScheduler {
     /// # Constraints setup
     pub fn minimize_exams_per_day(
         &self,
-        students: &[SchedulerStudent],
+        students: &HashMap<StudentId, Vec<ExamId>>,
         days: &[&[TimeslotId]],
-        student_weight: impl Fn(&SchedulerStudent) -> u64,
+        student_weight: impl Fn(StudentId) -> u64,
     ) {
         let total_penalty: Int = students
             .iter()
-            .flat_map(|student| {
-                let weight = student_weight(student) as i64;
+            .flat_map(|(student_id, exams)| {
+                let weight = student_weight(*student_id) as i64;
                 days.iter().map(move |day_timeslots| {
-                    let count = self.exams_on_day(student, day_timeslots);
+                    let count = self.exams_on_day(exams, day_timeslots);
 
                     // Penalty = weight * max(0, count - 1)
                     // i.e. 0 if 1 or fewer exams, scaled count otherwise
@@ -180,17 +216,16 @@ impl ExamScheduler {
         self.optimizer.maximize(&distance);
     }
 
-    /// Count the number of exams a student has on a given day
+    /// Count the number of exams within in a list is done on a given day
     ///
     /// # Params
-    /// - student: the student to count the exams for
+    /// - exams: the exams to count
     /// - day_timeslots: the list of timeslot indices that belong to the same day
     ///
     /// # Returns
-    /// - The number of exams the student has on the given day
-    fn exams_on_day(&self, student: &SchedulerStudent, day_timeslots: &[TimeslotId]) -> Int {
-        student
-            .exams
+    /// - The number of exams that happen on that day
+    fn exams_on_day(&self, exams: &[ExamId], day_timeslots: &[TimeslotId]) -> Int {
+        exams
             .iter()
             .map(|exam| {
                 let var = self.assignment.get(exam).unwrap();
@@ -210,41 +245,74 @@ impl ExamScheduler {
     ///
     /// # Constraints setup
     /// - Students cannot have two exams in the same timeslot
-    pub fn setup_students(&self, students: &[SchedulerStudent]) {
-        for student in students {
-            let exams = student
-                .exams
+    pub fn setup_students(&mut self, students: &HashMap<StudentId, Vec<ExamId>>) {
+        for (student_id, exams) in students {
+            let exam_bools = exams
                 .iter()
                 .map(|exam| self.assignment.get(exam).unwrap())
                 .collect::<Box<[_]>>();
 
             // Constraint: a student cannot have two exams in the same timeslot
             // Therefore, all exams taken by a student must be in different timeslots
-            self.optimizer.assert(&Int::distinct(&exams));
+            self.tracker.assert_hard(
+                &self.optimizer,
+                &Int::distinct(&exam_bools),
+                ConstraintError::StudentDistinct {
+                    student: *student_id,
+                    exams: exams.clone(),
+                },
+            );
         }
     }
 
     pub fn solve(&self) -> Result<HashMap<ExamId, TimeslotId>, SolverError> {
-        match self.optimizer.check(&[]) {
+        let sat_result = self.optimizer.check(&[]);
+
+        match sat_result {
             SatResult::Sat => {
-                let model = self.optimizer.get_model().unwrap();
+                let model = self
+                    .optimizer
+                    .get_model()
+                    .ok_or_else(|| SolverError::NoModel {
+                        debug: self.tracker.build_debug_info(&self.optimizer),
+                    })?;
+
                 let result = self
                     .assignment
                     .iter()
                     .map(|(&exam, var)| {
+                        let value =
+                            model
+                                .eval(var, true)
+                                .ok_or_else(|| SolverError::ModelEvaluation {
+                                    exam,
+                                    details: format!("Model did not produce a value for {var}"),
+                                    debug: self.tracker.build_debug_info(&self.optimizer),
+                                })?;
+
                         let timeslot =
-                            model.eval(var, true).unwrap().as_i64().unwrap() as TimeslotId;
-                        (exam, timeslot)
+                            value.as_i64().ok_or_else(|| SolverError::ModelEvaluation {
+                                exam,
+                                details: format!("Model value for {var} was not an i64: {}", value),
+                                debug: self.tracker.build_debug_info(&self.optimizer),
+                            })? as TimeslotId;
+
+                        Ok((exam, timeslot))
                     })
-                    .collect();
+                    .collect::<Result<HashMap<ExamId, TimeslotId>, SolverError>>()?;
+
                 Ok(result)
             }
-            SatResult::Unsat => {
-                let core = self.optimizer.get_unsat_core();
-                let violated = core.iter().map(|b| b.to_string()).collect();
-                Err(SolverError::Infeasible(violated))
-            }
-            SatResult::Unknown => Err(SolverError::Unknown),
+            SatResult::Unsat => Err(SolverError::Infeasible {
+                unsat_core_constraints: self
+                    .tracker
+                    .unsat_core_constraints(&self.optimizer, sat_result),
+                debug: self.tracker.build_debug_info(&self.optimizer),
+            }),
+            SatResult::Unknown => Err(SolverError::Unknown {
+                reason: self.optimizer.get_reason_unknown(),
+                debug: self.tracker.build_debug_info(&self.optimizer),
+            }),
         }
     }
 }
@@ -288,26 +356,17 @@ mod tests {
         let exam_ids = vec![1, 2, 3];
         let n_timeslots = 2;
 
-        let scheduler = ExamScheduler::new(&exam_ids, n_timeslots);
-        scheduler.setup_students(&[
-            SchedulerStudent {
-                id: 1,
-                exams: vec![1, 2],
-            },
-            SchedulerStudent {
-                id: 2,
-                exams: vec![2, 3],
-            },
-        ]);
+        let mut scheduler = ExamScheduler::new(&exam_ids, n_timeslots);
+        scheduler.setup_students(&HashMap::from([(1, vec![1, 2]), (2, vec![2, 3])]));
 
-        for (exam, time) in scheduler.solve().expect("Expected a solution") {
-            match exam {
-                1 => assert_eq!(time, 0),
-                2 => assert_eq!(time, 1),
-                3 => assert_eq!(time, 0),
-                _ => panic!("Unexpected exam id"),
-            }
-        }
+        let solution = scheduler.solve().expect("Expected a solution");
+
+        let exam_1 = solution.get(&1).expect("missing exam 1");
+        let exam_2 = solution.get(&2).expect("missing exam 2");
+        let exam_3 = solution.get(&3).expect("missing exam 3");
+
+        assert_ne!(exam_1, exam_2, "student 1 has a clash");
+        assert_ne!(exam_2, exam_3, "student 2 has a clash");
     }
 
     #[test]
@@ -315,19 +374,19 @@ mod tests {
         let exam_ids = vec![1, 2, 3];
         let n_timeslots = 2;
 
-        let scheduler = ExamScheduler::new(&exam_ids, n_timeslots);
-        scheduler.setup_students(&[SchedulerStudent {
-            id: 1,
-            exams: vec![1, 2, 3],
-        }]);
+        let mut scheduler = ExamScheduler::new(&exam_ids, n_timeslots);
+        scheduler.setup_students(&HashMap::from([(1, vec![1, 2, 3])]));
 
         let errors = scheduler.solve().expect_err("Expected an error");
 
         match errors {
-            SolverError::Infeasible(violated) => {
-                dbg!(&violated);
-                todo!("Check that the violated constraints contain the distinct constraint for the student's exams");
-                // assert!(violated.iter().any(|c| c.contains("distinct")));
+            SolverError::Infeasible {
+                unsat_core_constraints,
+                ..
+            } => {
+                assert!(unsat_core_constraints
+                    .iter()
+                    .any(|c| matches!(c, ConstraintError::StudentDistinct { student: 1, .. })));
             }
             _ => panic!("Expected an infeasibility error"),
         }
@@ -344,11 +403,41 @@ mod tests {
 #[derive(Debug, thiserror::Error)]
 pub enum SolverError {
     /// The query is unsatisfiable. No schedule that satisfies all hard constraints exists.
-    #[error(
-        "The query is unsatisfiable. No schedule that satisfies all hard constraints exists: {0:?}"
-    )]
-    Infeasible(Vec<String>),
+    #[error("The query is unsatisfiable. No schedule that satisfies all hard constraints exists")]
+    Infeasible {
+        /// Hard constraints participating in the unsat core.
+        ///
+        /// This is typically a minimal or near-minimal conflicting subset and is the
+        /// primary signal for explaining infeasibility.
+        unsat_core_constraints: Vec<ConstraintError>,
+        /// Shared debug context captured when the error was produced.
+        debug: SolverDebugInfo,
+    },
+
+    /// Z3 reported SAT but no model was available.
+    #[error("The query was satisfiable but no model was returned")]
+    NoModel {
+        /// Shared debug context captured when the error was produced.
+        debug: SolverDebugInfo,
+    },
+
+    /// Z3 returned a model that could not be converted to a timeslot id.
+    #[error("Failed to evaluate model for exam {exam}: {details}")]
+    ModelEvaluation {
+        /// The exam whose model value failed to evaluate or convert.
+        exam: ExamId,
+        /// Human-readable details describing the model evaluation/conversion failure.
+        details: String,
+        /// Shared debug context captured when the error was produced.
+        debug: SolverDebugInfo,
+    },
+
     /// The query was interrupted, timed out or otherwise failed.
     #[error("The query was interrupted, timed out or otherwise failed")]
-    Unknown,
+    Unknown {
+        /// Optional reason returned by Z3 for the unknown result.
+        reason: Option<String>,
+        /// Shared debug context captured when the error was produced.
+        debug: SolverDebugInfo,
+    },
 }
