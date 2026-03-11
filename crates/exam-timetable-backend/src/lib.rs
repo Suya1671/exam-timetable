@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
-use exam_timetable_model::{ExamId, StudentId, TimeslotId};
+use exam_timetable_model::{ExamId, StudentId, SubjectId, TimeslotId};
 use exam_timetable_solver::{ExamScheduler, SolverError};
 use itertools::Itertools;
 use sqlx::{query, query_scalar, Sqlite, Transaction};
@@ -51,13 +51,26 @@ pub async fn solve(
 
     scheduler.setup_students(&exams_per_student);
 
+    for exam_id in exam_ids {
+        let allowed_timeslots = build_allowed_timeslots(&mut txn, exam_id).await?;
+        scheduler.add_allowed_timeslots(exam_id, &allowed_timeslots);
+
+        let disallowed_timeslots = build_disallowed_timeslots(&mut txn, exam_id).await?;
+        scheduler.add_disallowed_timeslots(exam_id, &disallowed_timeslots);
+    }
+
     let results = scheduler.solve()?;
 
     Ok(results)
 }
 
+struct TimeslotRow {
+    id: TimeslotId,
+    date: Date,
+}
+
 /// Groups timeslots by the weekday of their calendar date
-pub async fn group_by_weekday(
+async fn group_by_weekday(
     mut txn: Transaction<'_, Sqlite>,
 ) -> Result<HashMap<time::Weekday, Vec<TimeslotId>>, SolveError> {
     let timeslots = fetch_timeslots(&mut txn).await?;
@@ -65,16 +78,79 @@ pub async fn group_by_weekday(
 }
 
 /// Groups timeslots by the calendar date
-pub async fn group_days(
-    mut txn: Transaction<'_, Sqlite>,
+async fn group_days(
+    txn: &mut Transaction<'_, Sqlite>,
 ) -> Result<HashMap<Date, Vec<TimeslotId>>, SolveError> {
-    let timeslots = fetch_timeslots(&mut txn).await?;
+    let timeslots = fetch_timeslots(txn).await?;
     Ok(group_timeslots_by(timeslots, |ts| ts.date))
 }
 
-struct TimeslotRow {
-    id: TimeslotId,
-    date: Date,
+async fn build_allowed_timeslots(
+    txn: &mut Transaction<'_, Sqlite>,
+    exam: ExamId,
+) -> Result<Vec<TimeslotId>, SolveError> {
+    let results = query_scalar!(
+        "
+            -- Exams
+            SELECT
+                timeslot_id as 'timeslot_id: TimeslotId'
+            FROM exam_allowed_timeslots
+            WHERE exam_id = $1
+            -- Students
+            UNION
+            SELECT
+                timeslot_id as 'timeslot_id: TimeslotId'
+            FROM student_allowed_timeslots
+            JOIN enrolled_students ON student_allowed_timeslots.student_id = enrolled_students.student_id
+            JOIN exams ON enrolled_students.subject_id = exams.subject_id
+            WHERE exams.id = $1
+            -- Subjects
+            UNION
+            SELECT
+                timeslot_id as 'timeslot_id: TimeslotId'
+            FROM subject_allowed_timeslots
+            JOIN exams ON subject_allowed_timeslots.subject_id = exams.subject_id
+            WHERE exams.id = $1
+        ",
+        exam
+    ).fetch_all(&mut **txn)
+    .await?;
+
+    Ok(results.into_iter().unique().collect())
+}
+
+async fn build_disallowed_timeslots(
+    txn: &mut Transaction<'_, Sqlite>,
+    exam: ExamId,
+) -> Result<Vec<TimeslotId>, SolveError> {
+    let results = query_scalar!(
+        "
+            -- Exams
+            SELECT
+                timeslot_id as 'timeslot_id: TimeslotId'
+            FROM exam_denied_timeslots
+            WHERE exam_id = $1
+            -- Students
+            UNION
+            SELECT
+                timeslot_id as 'timeslot_id: TimeslotId'
+            FROM student_denied_timeslots
+            JOIN enrolled_students ON student_denied_timeslots.student_id = enrolled_students.student_id
+            JOIN exams ON enrolled_students.subject_id = exams.subject_id
+            WHERE exams.id = $1
+            -- Subjects
+            UNION
+            SELECT
+                timeslot_id as 'timeslot_id: TimeslotId'
+            FROM subject_denied_timeslots
+            JOIN exams ON subject_denied_timeslots.subject_id = exams.subject_id
+            WHERE exams.id = $1
+        ",
+        exam
+    ).fetch_all(&mut **txn)
+    .await?;
+
+    Ok(results.into_iter().unique().collect())
 }
 
 async fn fetch_timeslots(

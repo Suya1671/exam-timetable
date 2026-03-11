@@ -232,6 +232,8 @@
             pkgs.nixd
             pkgs.clang
             pkgs.mold
+            # for rustrover
+            pkgs.rustup
           ];
         };
       }
