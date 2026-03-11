@@ -19,7 +19,7 @@ base64 = { version = "0.22" }
 crypto-common = { version = "0.1", default-features = false, features = ["std"] }
 deranged = { version = "0.5", features = ["powerfmt", "serde"] }
 digest = { version = "0.10", features = ["std"] }
-either = { version = "1", features = ["serde"] }
+either = { version = "1", features = ["serde", "use_std"] }
 futures-sink = { version = "0.3", default-features = false, features = ["std"] }
 futures-util = { version = "0.3", default-features = false, features = ["async-await-macro", "channel", "io", "sink"] }
 memchr = { version = "2" }
@@ -36,7 +36,7 @@ base64 = { version = "0.22" }
 crypto-common = { version = "0.1", default-features = false, features = ["std"] }
 deranged = { version = "0.5", features = ["powerfmt", "serde"] }
 digest = { version = "0.10", features = ["std"] }
-either = { version = "1", features = ["serde"] }
+either = { version = "1", features = ["serde", "use_std"] }
 futures-sink = { version = "0.3", default-features = false, features = ["std"] }
 futures-util = { version = "0.3", default-features = false, features = ["async-await-macro", "channel", "io", "sink"] }
 memchr = { version = "2" }

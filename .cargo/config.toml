@@ -1,3 +1,9 @@
 [target.'cfg(target_os = "linux")']
 linker = "clang"
 rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+[alias]
+cov = "llvm-cov nextest --all-features --summary-only"
+cov-html = "llvm-cov nextest --all-features --html --output-dir coverage"
+cov-lcov = "llvm-cov nextest --all-features --lcov --output-path coverage/lcov.info"
+cov-cobertura = "llvm-cov nextest --all-features --cobertura --output-path coverage/cobertura.xml"

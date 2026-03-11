@@ -42,7 +42,7 @@
         craneLib = (crane.mkLib pkgs).overrideToolchain (
           p:
           p.rust-bin.stable.latest.default.override {
-            extensions = [ "rust-src" "rust-analyzer" "clippy" "rustfmt" ];
+            extensions = [ "rust-src" "rust-analyzer" "clippy" "rustfmt" "llvm-tools-preview" ];
           }
         );
 
@@ -66,6 +66,7 @@
           nativeBuildInputs = [
             pkgs.mold
             pkgs.clang
+            pkgs.cargo-llvm-cov
           ];
 
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
@@ -191,6 +192,49 @@
             }
           );
 
+          # Generate LLVM coverage summary for the workspace
+          exam-timetable-coverage = craneLib.mkCargoDerivation {
+            inherit src;
+            pname = "exam-timetable-coverage";
+            cargoArtifacts = null;
+            doInstallCargoArtifacts = false;
+
+            nativeBuildInputs = [
+              pkgs.cargo-llvm-cov
+              pkgs.rust-bin.stable.latest.default
+              pkgs.clang
+              pkgs.mold
+            ];
+
+            buildPhaseCargoCommand = ''
+              mkdir -p $out
+              cargo llvm-cov nextest --workspace --all-features --summary-only > $out/summary.txt
+              cargo llvm-cov nextest --workspace --all-features --lcov --output-path $out/lcov.info
+              cargo llvm-cov nextest --workspace --all-features --cobertura --output-path $out/cobertura.xml
+            '';
+          };
+
+          # Generate browsable HTML coverage report
+          exam-timetable-coverage-html = craneLib.mkCargoDerivation {
+            inherit src;
+            pname = "exam-timetable-coverage-html";
+            cargoArtifacts = null;
+            doInstallCargoArtifacts = false;
+
+            nativeBuildInputs = [
+              pkgs.cargo-llvm-cov
+              pkgs.rust-bin.stable.latest.default
+              pkgs.clang
+              pkgs.mold
+            ];
+
+            buildPhaseCargoCommand = ''
+              cargo llvm-cov nextest --workspace --all-features --html --output-dir html
+              mkdir -p $out
+              cp -r html/* $out/
+            '';
+          };
+
           # Ensure that cargo-hakari is up to date
           exam-timetable-hakari = craneLib.mkCargoDerivation {
             inherit src;
@@ -212,12 +256,20 @@
 
         packages = {
           # inherit my-server;
+          coverage = self.checks.${system}.exam-timetable-coverage;
+          coverage-html = self.checks.${system}.exam-timetable-coverage-html;
         };
 
         apps = {
           # my-server = flake-utils.lib.mkApp {
           #   drv = my-server;
           # };
+          coverage = flake-utils.lib.mkApp {
+            drv = self.packages.${system}.coverage;
+          };
+          coverage-html = flake-utils.lib.mkApp {
+            drv = self.packages.${system}.coverage-html;
+          };
         };
 
         devShells.default = craneLib.devShell {
@@ -228,6 +280,7 @@
 
           packages = [
             pkgs.cargo-hakari
+            pkgs.cargo-llvm-cov
             pkgs.sqlx-cli
             pkgs.nixd
             pkgs.clang
