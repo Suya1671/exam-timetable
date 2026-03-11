@@ -102,7 +102,7 @@ These are the most compatible formats for inline or side-panel coverage workflow
 If you only want solver coverage (still through nextest):
 
 ```/dev/null/cov-solver.sh#L1-1
-cargo llvm-cov nextest -p exam-timetable-solver --all-features --html --output-dir coverage/html-solver
+cargo llvm-cov nextest -p solver --all-features --html --output-dir coverage/html-solver
 ```
 
 Open:

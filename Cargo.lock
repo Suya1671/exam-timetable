@@ -39,6 +39,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
+name = "backend"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "hack",
+ "itertools 0.14.0",
+ "model",
+ "solver",
+ "sqlx",
+ "thiserror",
+ "time",
+ "tokio",
+]
+
+[[package]]
 name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -298,66 +313,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "exam-timetable-backend"
-version = "0.1.0"
-dependencies = [
- "exam-timetable-hack",
- "exam-timetable-model",
- "exam-timetable-solver",
- "futures",
- "itertools 0.14.0",
- "sqlx",
- "thiserror",
- "time",
- "tokio",
-]
-
-[[package]]
-name = "exam-timetable-hack"
-version = "0.1.0"
-dependencies = [
- "base64",
- "crypto-common",
- "deranged",
- "digest",
- "either",
- "futures-sink",
- "futures-util",
- "memchr",
- "num-traits",
- "proc-macro2",
- "quote",
- "serde",
- "serde_core",
- "serde_json",
- "sha2",
- "sqlx-sqlite",
- "syn",
- "time",
-]
-
-[[package]]
-name = "exam-timetable-model"
-version = "0.1.0"
-dependencies = [
- "exam-timetable-hack",
- "serde",
- "time",
-]
-
-[[package]]
-name = "exam-timetable-solver"
-version = "0.1.0"
-dependencies = [
- "exam-timetable-hack",
- "exam-timetable-model",
- "serde",
- "serde_json",
- "thiserror",
- "z3",
-]
-
-[[package]]
 name = "find-msvc-tools"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -530,6 +485,30 @@ name = "glob"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
+
+[[package]]
+name = "hack"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "crypto-common",
+ "deranged",
+ "digest",
+ "either",
+ "futures-sink",
+ "futures-util",
+ "memchr",
+ "num-traits",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_core",
+ "serde_json",
+ "sha2",
+ "sqlx-sqlite",
+ "syn",
+ "time",
+]
 
 [[package]]
 name = "hashbrown"
@@ -970,6 +949,15 @@ dependencies = [
  "libc",
  "wasi",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "model"
+version = "0.1.0"
+dependencies = [
+ "hack",
+ "serde",
+ "time",
 ]
 
 [[package]]
@@ -1631,6 +1619,18 @@ checksum = "86f4aa3ad99f2088c990dfa82d367e19cb29268ed67c574d10d0a4bfe71f07e0"
 dependencies = [
  "libc",
  "windows-sys 0.60.2",
+]
+
+[[package]]
+name = "solver"
+version = "0.1.0"
+dependencies = [
+ "hack",
+ "model",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "z3",
 ]
 
 [[package]]

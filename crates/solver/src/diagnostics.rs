@@ -1,4 +1,4 @@
-use exam_timetable_model::{ExamId, StudentId, TimeslotId};
+use model::{ExamId, StudentId, TimeslotId};
 use serde::{Deserialize, Serialize};
 
 /// Structured description of a hard constraint attached to Z3.
@@ -39,6 +39,14 @@ pub enum ConstraintError {
         student: StudentId,
         /// The exams that must be pairwise non-overlapping for the student.
         exams: Vec<ExamId>,
+    },
+    /// Two exams were constrained to be assigned on the same day, consecutively.
+    PairConstraint {
+        /// The first exam in the pairwise constraint.
+        exam1: ExamId,
+        /// The second exam in the pairwise constraint.
+        exam2: ExamId,
+        allowed_pairs: Vec<(TimeslotId, TimeslotId)>,
     },
 }
 

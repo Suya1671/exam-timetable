@@ -96,10 +96,10 @@
               ./Cargo.toml
               ./Cargo.lock
               ./migrations
-              (craneLib.fileset.commonCargoSources ./crates/exam-timetable-model)
-              (craneLib.fileset.commonCargoSources ./crates/exam-timetable-hack)
-              (craneLib.fileset.commonCargoSources ./crates/exam-timetable-solver)
-              (craneLib.fileset.commonCargoSources ./crates/exam-timetable-backend)
+              (craneLib.fileset.commonCargoSources ./crates/model)
+              (craneLib.fileset.commonCargoSources ./crates/hack)
+              (craneLib.fileset.commonCargoSources ./crates/solver)
+              (craneLib.fileset.commonCargoSources ./crates/backend)
               (craneLib.fileset.commonCargoSources crate)
             ];
           };

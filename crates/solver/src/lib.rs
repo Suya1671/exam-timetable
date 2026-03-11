@@ -6,7 +6,7 @@ pub use crate::diagnostics::{ConstraintError, SolverDebugInfo};
 
 use std::collections::HashMap;
 
-use exam_timetable_model::{ExamId, StudentId, TimeslotId};
+use model::{ExamId, StudentId, TimeslotId};
 use z3::{
     ast::{Ast, Bool, Int},
     Optimize, SatResult,
@@ -19,9 +19,6 @@ use crate::int_extensions::IntExtensions;
 // - Always ensure that timeslots are ordered by their date and then by slot number to ensure consistent variable indexing
 
 /// An exam scheduler
-///
-/// Note: the information used in functions _must not change_
-/// i.e. you cannot just add a new timeslot in the middle of setting up the scheduler
 pub struct ExamScheduler {
     /// The Z3 solver/optimizer instance
     optimizer: Optimize,
@@ -54,10 +51,10 @@ impl ExamScheduler {
 
         let assignment = exam_ids
             .iter()
-            .map(|exam| {
+            .map(|&exam| {
                 let var = Int::fresh_const(&format!("exam_{}", exam));
 
-                (*exam, var)
+                (exam, var)
             })
             .collect::<HashMap<_, _>>();
 
@@ -67,22 +64,19 @@ impl ExamScheduler {
             tracker: ConstraintTracker::new(),
         };
 
-        for exam in exam_ids {
-            let exam_var = scheduler.assignment.get(exam).unwrap();
+        for &exam in exam_ids {
+            let exam_var = scheduler.assignment.get(&exam).unwrap();
 
             // Domain constraint: each exam must be assigned to a valid timeslot (i.e. within index bounds)
             scheduler.tracker.assert_hard(
                 &scheduler.optimizer,
                 &exam_var.ge(Int::from_i64(0)),
-                ConstraintError::DomainLowerBound { exam: *exam },
+                ConstraintError::DomainLowerBound { exam },
             );
             scheduler.tracker.assert_hard(
                 &scheduler.optimizer,
                 &exam_var.lt(Int::from_i64(n_timeslots)),
-                ConstraintError::DomainUpperBound {
-                    exam: *exam,
-                    n_timeslots,
-                },
+                ConstraintError::DomainUpperBound { exam, n_timeslots },
             );
         }
 
@@ -110,12 +104,41 @@ impl ExamScheduler {
             &Bool::or(
                 &allowed_timeslots
                     .iter()
-                    .map(|timeslot| exam_timeslot.eq(Int::from_i64(*timeslot)))
+                    .map(|&timeslot| exam_timeslot.eq(Int::from_i64(timeslot)))
                     .collect::<Box<[_]>>(),
             ),
             ConstraintError::AllowedTimeslots {
                 exam,
                 timeslots: allowed_timeslots.to_vec(),
+            },
+        );
+    }
+
+    /// Requires that two exams must be scheduled in any pair of timeslots from a given list
+    pub fn add_pair_constraint(
+        &mut self,
+        exam1: ExamId,
+        exam2: ExamId,
+        allowed_timeslot_pairs: &[(TimeslotId, TimeslotId)],
+    ) {
+        let timeslot1 = self.assignment.get(&exam1).unwrap();
+        let timeslot2 = self.assignment.get(&exam2).unwrap();
+
+        // Constraint: the two exams must be scheduled in any pair of timeslots from the given list
+        self.tracker.assert_hard(
+            &self.optimizer,
+            &Bool::or(
+                &allowed_timeslot_pairs
+                    .iter()
+                    .map(|&(t1, t2)| {
+                        timeslot1.eq(Int::from_i64(t1)) & timeslot2.eq(Int::from_i64(t2))
+                    })
+                    .collect::<Box<[_]>>(),
+            ),
+            ConstraintError::PairConstraint {
+                exam1,
+                exam2,
+                allowed_pairs: allowed_timeslot_pairs.to_vec(),
             },
         );
     }
@@ -131,15 +154,12 @@ impl ExamScheduler {
     pub fn add_disallowed_timeslots(&mut self, exam: ExamId, disallowed_timeslots: &[TimeslotId]) {
         let exam_timeslot = self.assignment.get(&exam).unwrap();
 
-        for timeslot in disallowed_timeslots {
+        for &timeslot in disallowed_timeslots {
             // Constraint: the exam must not be scheduled in any of the disallowed timeslots
             self.tracker.assert_hard(
                 &self.optimizer,
-                &exam_timeslot.eq(Int::from_i64(*timeslot)).not(),
-                ConstraintError::DisallowedTimeslot {
-                    exam,
-                    timeslot: *timeslot,
-                },
+                &exam_timeslot.eq(Int::from_i64(timeslot)).not(),
+                ConstraintError::DisallowedTimeslot { exam, timeslot },
             );
         }
     }
@@ -153,14 +173,81 @@ impl ExamScheduler {
     ///
     /// # Constraints setup
     /// - Soft constraint: the exam should be scheduled in the preferred timeslot
-    pub async fn prioritise_exam(&self, exam: ExamId, timeslots: &[TimeslotId], priority: i64) {
+    pub fn prioritise_exam(&self, exam: ExamId, timeslots: &[TimeslotId], priority: i64) {
         let exam_timeslot = self.assignment.get(&exam).unwrap();
 
-        for timeslot in timeslots {
+        for &timeslot in timeslots {
             // Soft constraint: the exam should be scheduled in the preferred timeslot
             self.optimizer
-                .assert_soft(&exam_timeslot.eq(Int::from_i64(*timeslot)), priority, None);
+                .assert_soft(&exam_timeslot.eq(Int::from_i64(timeslot)), priority, None);
         }
+    }
+
+    /// Constrains two exams to have different values for a given timeslot property.
+    ///
+    /// For example, given a week mapping, this ensures P1 and P2 of the same subject
+    /// are scheduled in different weeks. Given a day mapping, it ensures two exams
+    /// don't fall on the same day.
+    ///
+    /// # Params
+    /// - exam_a: the first exam
+    /// - exam_b: the second exam
+    /// - mapping: a map of timeslot ID -> property value to separate by (e.g. TimeslotId -> week number)
+    pub fn separate_exam_groups(
+        &self,
+        exam_a: ExamId,
+        exam_b: ExamId,
+        mapping: &HashMap<TimeslotId, i64>,
+    ) {
+        let a = self.assignment.get(&exam_a).unwrap();
+        let b = self.assignment.get(&exam_b).unwrap();
+
+        let property_a = self.timeslot_property_expr(a, mapping);
+        let property_b = self.timeslot_property_expr(b, mapping);
+
+        self.optimizer.assert(&property_a.eq(property_b).not());
+    }
+
+    /// Maps a symbolic timeslot assignment variable to a concrete property of that timeslot.
+    ///
+    /// Since the timeslot assignment is a Z3 variable (not a concrete value), we cannot simply
+    /// index into a map at runtime. This function allows Z3 to reason about timeslot properties
+    /// symbolically — for example, "what week is this exam in?" or "what day is this exam on?" —
+    /// so that those properties can be used in further constraints.
+    ///
+    /// # Params
+    /// - var: the Z3 timeslot assignment variable for an exam
+    /// - mapping: a map of timeslot ID -> property value (e.g. TimeslotId -> week number)
+    ///
+    /// # Example
+    /// ```
+    /// // Constrain two exams to be in different weeks
+    /// let week_of_p1 = self.timeslot_property_expr(&self.assignment[&p1], &week_map);
+    /// let week_of_p2 = self.timeslot_property_expr(&self.assignment[&p2], &week_map);
+    /// self.solver.assert(week_of_p1.eq(week_of_p2).not());
+    /// ```
+    fn timeslot_property_expr(&self, var: &Int, mapping: &HashMap<TimeslotId, i64>) -> Int {
+        mapping
+            .iter()
+            .fold(Int::from_i64(-1), |acc, (&timeslot, &value)| {
+                Bool::ite(
+                    &var.eq(Int::from_i64(timeslot)),
+                    &Int::from_i64(value),
+                    &acc,
+                )
+            })
+    }
+
+    /// Add a constraint that an exam must be scheduled in multiple timeslots
+    ///
+    /// # Params
+    /// - exam: the exam to add the constraint for
+    /// - timeslot_combinations: a list of allowed combinations of timeslots for the exam. Each combination is a list of timeslot indices that the exam can be scheduled over
+    pub fn add_multi_slot_exam_constraint(
+        &mut self,
+        exam: ExamId,
+        timeslot_combinations: &[&[TimeslotId]],
+    ) {
     }
 
     /// Add a soft constraint to minimize the number of exams a student has on the same day
@@ -171,6 +258,7 @@ impl ExamScheduler {
     /// - student_weight: a function that takes a student and returns a weight for how important it is to minimize the number of exams on the same day for that student
     ///
     /// # Constraints setup
+    /// - Soft constraint: for each student and each day, if the student has more than 1 exam on that day, add a penalty proportional to the number of excess exams and the student weight. This encourages the solver to spread a student's exams across different days, but does not require it (i.e. it's a soft constraint).
     pub fn minimize_exams_per_day(
         &self,
         students: &HashMap<StudentId, Vec<ExamId>>,
@@ -179,8 +267,8 @@ impl ExamScheduler {
     ) {
         let total_penalty: Int = students
             .iter()
-            .flat_map(|(student_id, exams)| {
-                let weight = student_weight(*student_id) as i64;
+            .flat_map(|(&student_id, exams)| {
+                let weight = student_weight(student_id) as i64;
                 days.iter().map(move |day_timeslots| {
                     let count = self.exams_on_day(exams, day_timeslots);
 
@@ -246,7 +334,7 @@ impl ExamScheduler {
     /// # Constraints setup
     /// - Students cannot have two exams in the same timeslot
     pub fn setup_students(&mut self, students: &HashMap<StudentId, Vec<ExamId>>) {
-        for (student_id, exams) in students {
+        for (&student_id, exams) in students {
             let exam_bools = exams
                 .iter()
                 .map(|exam| self.assignment.get(exam).unwrap())
@@ -258,7 +346,7 @@ impl ExamScheduler {
                 &self.optimizer,
                 &Int::distinct(&exam_bools),
                 ConstraintError::StudentDistinct {
-                    student: *student_id,
+                    student: student_id,
                     exams: exams.clone(),
                 },
             );
@@ -321,26 +409,11 @@ impl ExamScheduler {
 mod tests {
     use super::*;
 
-    // async fn create_testing_pool() -> SqlitePool {
-    //     let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-
-    //     sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
-
-    //     // example data
-    //     sqlx::query!(
-    //         r#"
-    //         INSERT INTO subjects (id, name, grade) VALUES
-    //             (1, 'Mathematics', 10),
-    //             (2, 'Physics', 10),
-    //             (3, 'Chemistry', 10)
-    //         "#
-    //     )
-    //     .execute(&pool)
-    //     .await
-    //     .unwrap();
-
-    //     pool
-    // }
+    fn solved_timeslot(solution: &HashMap<ExamId, TimeslotId>, exam: ExamId) -> TimeslotId {
+        *solution
+            .get(&exam)
+            .unwrap_or_else(|| panic!("missing exam {exam}"))
+    }
 
     #[test]
     fn basic_solve() {
@@ -348,11 +421,161 @@ mod tests {
         let n_timeslots = 3;
 
         let scheduler = ExamScheduler::new(&exam_ids, n_timeslots);
-        assert!(scheduler.solve().is_ok());
+        let solution = scheduler.solve().expect("Expected a valid solution");
+
+        assert_eq!(solution.len(), exam_ids.len());
+        for exam in exam_ids {
+            let t = solved_timeslot(&solution, exam);
+            assert!(t >= 0 && t < n_timeslots);
+        }
     }
 
     #[test]
-    fn basic_with_students() {
+    fn add_allowed_timeslots_restricts_domain() {
+        let exam_ids = vec![1];
+        let mut scheduler = ExamScheduler::new(&exam_ids, 4);
+
+        scheduler.add_allowed_timeslots(1, &[2, 3]);
+
+        let solution = scheduler.solve().expect("Expected a valid solution");
+        let t = solved_timeslot(&solution, 1);
+
+        assert!([2, 3].contains(&t));
+    }
+
+    #[test]
+    fn add_allowed_timeslots_conflict_is_infeasible() {
+        let exam_ids = vec![1];
+        let mut scheduler = ExamScheduler::new(&exam_ids, 4);
+
+        scheduler.add_allowed_timeslots(1, &[0]);
+        scheduler.add_disallowed_timeslots(1, &[0]);
+
+        let err = scheduler
+            .solve()
+            .expect_err("Expected infeasible constraints");
+
+        match err {
+            SolverError::Infeasible {
+                unsat_core_constraints,
+                ..
+            } => {
+                assert!(unsat_core_constraints.iter().any(|c| {
+                    matches!(
+                        c,
+                        ConstraintError::AllowedTimeslots {
+                            exam: 1,
+                            timeslots
+                        } if timeslots == &vec![0]
+                    )
+                }));
+                assert!(unsat_core_constraints.iter().any(|c| {
+                    matches!(
+                        c,
+                        ConstraintError::DisallowedTimeslot {
+                            exam: 1,
+                            timeslot: 0
+                        }
+                    )
+                }));
+            }
+            _ => panic!("Expected an infeasibility error"),
+        }
+    }
+
+    #[test]
+    fn add_pair_constraint_enforces_allowed_pairs() {
+        let exam_ids = vec![1, 2];
+        let mut scheduler = ExamScheduler::new(&exam_ids, 3);
+
+        scheduler.add_pair_constraint(1, 2, &[(0, 1), (2, 0)]);
+
+        let solution = scheduler.solve().expect("Expected a valid solution");
+        let pair = (solved_timeslot(&solution, 1), solved_timeslot(&solution, 2));
+
+        assert!(pair == (0, 1) || pair == (2, 0));
+    }
+
+    #[test]
+    fn add_pair_constraint_conflict_is_infeasible() {
+        let exam_ids = vec![1, 2];
+        let mut scheduler = ExamScheduler::new(&exam_ids, 2);
+
+        scheduler.add_pair_constraint(1, 2, &[(0, 1)]);
+        scheduler.add_pair_constraint(1, 2, &[(1, 0)]);
+
+        let err = scheduler
+            .solve()
+            .expect_err("Expected infeasible constraints");
+
+        match err {
+            SolverError::Infeasible {
+                unsat_core_constraints,
+                ..
+            } => {
+                let count = unsat_core_constraints
+                    .iter()
+                    .filter(|c| {
+                        matches!(
+                            c,
+                            ConstraintError::PairConstraint {
+                                exam1: 1,
+                                exam2: 2,
+                                ..
+                            }
+                        )
+                    })
+                    .count();
+
+                assert!(count >= 2, "Expected both pair constraints in unsat core");
+            }
+            _ => panic!("Expected an infeasibility error"),
+        }
+    }
+
+    #[test]
+    fn add_disallowed_timeslots_excludes_values() {
+        let exam_ids = vec![1];
+        let mut scheduler = ExamScheduler::new(&exam_ids, 3);
+
+        scheduler.add_disallowed_timeslots(1, &[0, 1]);
+
+        let solution = scheduler.solve().expect("Expected a valid solution");
+        assert_eq!(solved_timeslot(&solution, 1), 2);
+    }
+
+    #[test]
+    fn prioritise_exam_prefers_weighted_soft_constraints() {
+        let exam_ids = vec![1, 2];
+        let scheduler = ExamScheduler::new(&exam_ids, 3);
+
+        scheduler.prioritise_exam(1, &[0], 100);
+        scheduler.prioritise_exam(2, &[2], 100);
+
+        let solution = scheduler.solve().expect("Expected a valid solution");
+        assert_eq!(solved_timeslot(&solution, 1), 0);
+        assert_eq!(solved_timeslot(&solution, 2), 2);
+    }
+
+    #[test]
+    fn separate_exam_groups_uses_mapping_property() {
+        let exam_ids = vec![1, 2];
+        let scheduler = ExamScheduler::new(&exam_ids, 4);
+
+        // 0,1 -> day 0 ; 2,3 -> day 1
+        let day_map = HashMap::from([(0, 0), (1, 0), (2, 1), (3, 1)]);
+        scheduler.separate_exam_groups(1, 2, &day_map);
+
+        let solution = scheduler.solve().expect("Expected a valid solution");
+
+        let t1 = solved_timeslot(&solution, 1);
+        let t2 = solved_timeslot(&solution, 2);
+
+        assert_ne!(day_map.get(&t1), day_map.get(&t2));
+    }
+
+    #[test]
+    fn setup_students_prevents_clashes() {
         let exam_ids = vec![1, 2, 3];
         let n_timeslots = 2;
 
@@ -361,9 +584,9 @@ mod tests {
 
         let solution = scheduler.solve().expect("Expected a solution");
 
-        let exam_1 = solution.get(&1).expect("missing exam 1");
-        let exam_2 = solution.get(&2).expect("missing exam 2");
-        let exam_3 = solution.get(&3).expect("missing exam 3");
+        let exam_1 = solved_timeslot(&solution, 1);
+        let exam_2 = solved_timeslot(&solution, 2);
+        let exam_3 = solved_timeslot(&solution, 3);
 
         assert_ne!(exam_1, exam_2, "student 1 has a clash");
         assert_ne!(exam_2, exam_3, "student 2 has a clash");
@@ -390,6 +613,66 @@ mod tests {
             }
             _ => panic!("Expected an infeasibility error"),
         }
+    }
+
+    #[test]
+    fn minimize_exams_per_day_spreads_exams_for_student() {
+        let exam_ids = vec![1, 2, 3];
+        let n_timeslots = 3;
+        let scheduler = ExamScheduler::new(&exam_ids, n_timeslots);
+
+        // Day 0: slots 0,1 ; Day 1: slot 2
+        let days: [&[TimeslotId]; 2] = [&[0, 1], &[2]];
+        let students = HashMap::from([(10, vec![1, 2])]);
+
+        scheduler.minimize_exams_per_day(&students, &days, |_| 10);
+
+        let solution = scheduler.solve().expect("Expected a valid solution");
+        let t1 = solved_timeslot(&solution, 1);
+        let t2 = solved_timeslot(&solution, 2);
+
+        let same_day = (days[0].contains(&t1) && days[0].contains(&t2))
+            || (days[1].contains(&t1) && days[1].contains(&t2));
+        assert!(!same_day, "Expected exams to be spread across days");
+    }
+
+    #[test]
+    fn maximize_exam_distance_pushes_exams_apart() {
+        let exam_ids = vec![1, 2];
+        let scheduler = ExamScheduler::new(&exam_ids, 4);
+
+        scheduler.maximize_exam_distance(1, 2);
+
+        let solution = scheduler.solve().expect("Expected a valid solution");
+        let t1 = solved_timeslot(&solution, 1);
+        let t2 = solved_timeslot(&solution, 2);
+
+        let distance = (t1 - t2).abs();
+        assert_eq!(distance, 3, "Expected maximal distance in 4 timeslots");
+    }
+
+    #[test]
+    fn combined_constraints_and_optimizations_work_together() {
+        let exam_ids = vec![1, 2, 3];
+        let mut scheduler = ExamScheduler::new(&exam_ids, 4);
+
+        scheduler.add_allowed_timeslots(1, &[0, 1]);
+        scheduler.add_disallowed_timeslots(2, &[0]);
+        scheduler.add_pair_constraint(1, 3, &[(0, 2), (1, 3)]);
+        scheduler.setup_students(&HashMap::from([(42, vec![1, 2])]));
+        scheduler.maximize_exam_distance(1, 2);
+
+        let solution = scheduler.solve().expect("Expected a valid solution");
+
+        let t1 = solved_timeslot(&solution, 1);
+        let t2 = solved_timeslot(&solution, 2);
+        let t3 = solved_timeslot(&solution, 3);
+
+        assert!([0, 1].contains(&t1));
+        assert_ne!(t2, 0);
+        assert!(t1 != t2);
+
+        assert!((t1 == 0 && t3 == 2) || (t1 == 1 && t3 == 3));
     }
 }
 

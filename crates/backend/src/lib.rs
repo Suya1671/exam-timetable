@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
-use exam_timetable_model::{ExamId, StudentId, SubjectId, TimeslotId};
-use exam_timetable_solver::{ExamScheduler, SolverError};
+use model::{ExamId, StudentId, SubjectId, TimeslotId};
+use solver::{ExamScheduler, SolverError};
+use futures::{StreamExt, TryStreamExt};
 use itertools::Itertools;
 use sqlx::{query, query_scalar, Sqlite, Transaction};
 use time::Date;
@@ -59,6 +60,85 @@ pub async fn solve(
         scheduler.add_disallowed_timeslots(exam_id, &disallowed_timeslots);
     }
 
+    // distance maxing
+    let subject_exam_groups = query!(
+        "
+        SELECT
+            subject_id AS 'subject_id: SubjectId',
+            id AS 'exam_id: ExamId'
+        FROM exams
+        "
+    )
+    .fetch_all(&mut *txn)
+    .await?
+    .into_iter()
+    .into_grouping_map_by(|row| row.subject_id)
+    .fold(Vec::new(), |mut acc, _subject, row| {
+        acc.push(row.exam_id);
+        acc
+    });
+
+    let days = group_days(&mut txn)
+        .await?
+        .into_values()
+        .flat_map(|timeslots| timeslots.into_iter().tuple_combinations())
+        .collect::<Box<_>>();
+
+    for (exam1, exam2) in subject_exam_groups
+        .values()
+        .flat_map(|exams| exams.iter().tuple_combinations())
+    {
+        scheduler.maximize_exam_distance(*exam1, *exam2);
+    }
+
+    // Exams must happen on the same day
+    while let Some(Ok((exam1, exam2))) = query!(
+        "
+        SELECT
+            exam1_id AS 'exam1_id: ExamId',
+            exam2_id AS 'exam2_id: ExamId'
+        FROM same_day_exams
+        "
+    )
+    .fetch(&mut *txn)
+    .map_ok(|row| (row.exam1_id, row.exam2_id))
+    .next()
+    .await
+    {
+        scheduler.add_pair_constraint(exam1, exam2, &days);
+    }
+
+    let week_groups = sqlx::query!(
+        "
+        SELECT
+            strftime('%W', date) AS 'week: i64',
+            id AS 'id: TimeslotId'
+        FROM timeslots
+        "
+    )
+    .fetch_all(&mut *txn)
+    .await?
+    .into_iter()
+    .map(|row| (row.id, row.week.expect("Invalid week number")))
+    .collect::<HashMap<_, _>>();
+
+    // Exam 1 and 2 must be in different weeks
+    while let Some(Ok((exam1, exam2))) = query!(
+        "
+        SELECT
+            exam1_id AS 'exam1_id: ExamId',
+            exam2_id AS 'exam2_id: ExamId'
+        FROM different_week_exams
+        "
+    )
+    .fetch(&mut *txn)
+    .map_ok(|row| (row.exam1_id, row.exam2_id))
+    .next()
+    .await
+    {
+        scheduler.separate_exam_groups(exam1, exam2, &week_groups);
+    }
+
     let results = scheduler.solve()?;
 
     Ok(results)
@@ -67,14 +147,6 @@ pub async fn solve(
 struct TimeslotRow {
     id: TimeslotId,
     date: Date,
-}
-
-/// Groups timeslots by the weekday of their calendar date
-async fn group_by_weekday(
-    mut txn: Transaction<'_, Sqlite>,
-) -> Result<HashMap<time::Weekday, Vec<TimeslotId>>, SolveError> {
-    let timeslots = fetch_timeslots(&mut txn).await?;
-    Ok(group_timeslots_by(timeslots, |ts| ts.date.weekday()))
 }
 
 /// Groups timeslots by the calendar date
