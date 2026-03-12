@@ -40,6 +40,26 @@ pub enum ConstraintError {
         /// The exams that must be pairwise non-overlapping for the student.
         exams: Vec<ExamId>,
     },
+    /// An exam was constrained to start only at valid multi-slot windows.
+    /// AI-generated (GPT-5.2-codex).
+    MultiSlotStart {
+        /// The exam whose start time was restricted.
+        exam: ExamId,
+        /// The number of consecutive slots required.
+        slots_required: u32,
+        /// Allowed start timeslots for the exam.
+        allowed_starts: Vec<TimeslotId>,
+    },
+    /// Another exam was constrained to not fall inside a multi-slot block.
+    /// AI-generated (GPT-5.2-codex).
+    BlockExclusion {
+        /// The multi-slot exam defining the blocked window.
+        block_exam: ExamId,
+        /// The exam that must remain outside the block.
+        other_exam: ExamId,
+        /// The number of consecutive slots required by the block exam.
+        slots_required: u32,
+    },
     /// Two exams were constrained to be assigned on the same day, consecutively.
     PairConstraint {
         /// The first exam in the pairwise constraint.

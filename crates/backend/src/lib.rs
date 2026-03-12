@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
-use model::{ExamId, StudentId, SubjectId, TimeslotId};
-use solver::{ExamScheduler, SolverError};
 use futures::{StreamExt, TryStreamExt};
 use itertools::Itertools;
+use model::{ExamId, StudentId, SubjectId, TimeslotId};
+use solver::{ExamScheduler, SolverError};
 use sqlx::{query, query_scalar, Sqlite, Transaction};
 use time::Date;
 
@@ -52,12 +52,64 @@ pub async fn solve(
 
     scheduler.setup_students(&exams_per_student);
 
+    let timeslot_index = build_timeslot_index(&mut txn).await?;
+
     for exam_id in exam_ids {
         let allowed_timeslots = build_allowed_timeslots(&mut txn, exam_id).await?;
         scheduler.add_allowed_timeslots(exam_id, &allowed_timeslots);
 
         let disallowed_timeslots = build_disallowed_timeslots(&mut txn, exam_id).await?;
         scheduler.add_disallowed_timeslots(exam_id, &disallowed_timeslots);
+    }
+
+    let multi_slot_exams = query!(
+        "
+        SELECT
+            id AS 'id: ExamId',
+            slots_required AS 'slots_required: i64'
+        FROM exams
+        WHERE slots_required > 1
+        "
+    )
+    .fetch_all(&mut *txn)
+    .await?;
+
+    let ordered_timeslots = timeslot_index.ordered.clone();
+    for exam in &multi_slot_exams {
+        let slots_required = exam.slots_required as usize;
+        let windows = build_consecutive_windows(&ordered_timeslots, slots_required);
+        let window_refs = windows
+            .iter()
+            .map(|window| window.as_slice())
+            .collect::<Vec<_>>();
+
+        scheduler.add_multi_slot_exam_constraint(exam.id, &window_refs);
+    }
+
+    let exam_cohorts = build_exam_cohorts(&exams_per_student);
+
+    for exam in &multi_slot_exams {
+        let block_exam = exam.id;
+        let slots_required = exam.slots_required as u32;
+
+        for exams in &exam_cohorts {
+            if !exams.contains(&block_exam) {
+                continue;
+            }
+
+            for &other_exam in exams {
+                if other_exam == block_exam {
+                    continue;
+                }
+
+                scheduler.prevent_block_overlap(
+                    block_exam,
+                    other_exam,
+                    slots_required,
+                    &timeslot_index.positions,
+                );
+            }
+        }
     }
 
     // distance maxing
@@ -255,4 +307,71 @@ fn group_timeslots_by<K: Eq + Hash>(
             .push(timeslot.id);
     }
     grouped
+}
+
+/// Chronological timeslot ordering plus a symbolic position map.
+///
+/// `ordered` is used to build consecutive windows, while `positions` is used
+/// to build Z3 expressions that reason about "between" relationships without
+/// relying on TimeslotId ordering.
+/// AI-generated (GPT-5.2-codex).
+struct TimeslotIndex {
+    ordered: Vec<TimeslotId>,
+    positions: HashMap<TimeslotId, i64>,
+}
+
+/// Build a chronological index for timeslots.
+///
+/// The returned positions map uses ordered list positions, not TimeslotId values.
+/// AI-generated (GPT-5.2-codex).
+async fn build_timeslot_index(
+    txn: &mut Transaction<'_, Sqlite>,
+) -> Result<TimeslotIndex, SolveError> {
+    let timeslots = fetch_timeslots(txn).await?;
+    let ordered: Vec<_> = timeslots.iter().map(|ts| ts.id).collect();
+    let positions = ordered
+        .iter()
+        .enumerate()
+        .map(|(idx, &id)| (id, idx as i64))
+        .collect();
+
+    Ok(TimeslotIndex { ordered, positions })
+}
+
+/// Build consecutive timeslot windows of a fixed size.
+///
+/// Windows are built using ordered list positions, so TimeslotId ordering is ignored.
+/// AI-generated (GPT-5.2-codex).
+fn build_consecutive_windows(
+    ordered_timeslots: &[TimeslotId],
+    slots_required: usize,
+) -> Vec<Vec<TimeslotId>> {
+    if slots_required == 0 || ordered_timeslots.len() < slots_required {
+        return Vec::new();
+    }
+
+    let mut windows = Vec::new();
+    for start in 0..=ordered_timeslots.len() - slots_required {
+        windows.push(ordered_timeslots[start..start + slots_required].to_vec());
+    }
+
+    windows
+}
+
+/// Build unique exam cohorts from per-student exam lists.
+///
+/// Cohorts are normalized via sorting and deduplication to avoid redundant constraints.
+/// AI-generated (GPT-5.2-codex).
+fn build_exam_cohorts(exams_per_student: &HashMap<StudentId, Vec<ExamId>>) -> Vec<Vec<ExamId>> {
+    let mut cohorts: HashMap<Vec<ExamId>, ()> = HashMap::new();
+
+    for exams in exams_per_student.values() {
+        let mut normalized = exams.clone();
+        normalized.sort_unstable();
+        normalized.dedup();
+
+        cohorts.entry(normalized).or_insert(());
+    }
+
+    cohorts.into_keys().collect()
 }

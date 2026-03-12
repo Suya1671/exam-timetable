@@ -1,3 +1,4 @@
+_AI Generated_
 # Coverage Guide
 
 This repository uses Rust LLVM coverage via `cargo-llvm-cov`, integrated with `cargo-nextest`.

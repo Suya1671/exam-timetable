@@ -248,6 +248,78 @@ impl ExamScheduler {
         exam: ExamId,
         timeslot_combinations: &[&[TimeslotId]],
     ) {
+        let exam_timeslot = self.assignment.get(&exam).unwrap();
+
+        let mut allowed_starts = Vec::new();
+        for combination in timeslot_combinations {
+            if let Some(&start) = combination.first() {
+                allowed_starts.push(start);
+            }
+        }
+
+        let slots_required = timeslot_combinations
+            .first()
+            .map_or(0_u32, |combo| combo.len() as u32);
+
+        let expr = if allowed_starts.is_empty() {
+            Bool::from_bool(false)
+        } else {
+            Bool::or(
+                &allowed_starts
+                    .iter()
+                    .map(|&timeslot| exam_timeslot.eq(Int::from_i64(timeslot)))
+                    .collect::<Box<[_]>>(),
+            )
+        };
+
+        self.tracker.assert_hard(
+            &self.optimizer,
+            &expr,
+            ConstraintError::MultiSlotStart {
+                exam,
+                slots_required,
+                allowed_starts: allowed_starts.clone(),
+            },
+        );
+    }
+
+    /// Prevent other exams from falling inside a multi-slot exam block.
+    ///
+    /// This treats the exam's assignment variable as the start of a consecutive
+    /// block of `slots_required` timeslots, based on the supplied position map.
+    ///
+    /// # Params
+    /// - block_exam: the multi-slot exam defining the blocked window
+    /// - other_exam: the exam that must remain outside the block
+    /// - slots_required: number of consecutive slots required by the block exam
+    /// - timeslot_positions: map of TimeslotId to ordered position index
+    /// AI-generated (GPT-5.2-codex).
+    pub fn prevent_block_overlap(
+        &mut self,
+        block_exam: ExamId,
+        other_exam: ExamId,
+        slots_required: u32,
+        timeslot_positions: &HashMap<TimeslotId, i64>,
+    ) {
+        let block_var = self.assignment.get(&block_exam).unwrap();
+        let other_var = self.assignment.get(&other_exam).unwrap();
+
+        let block_pos = self.timeslot_property_expr(block_var, timeslot_positions);
+        let other_pos = self.timeslot_property_expr(other_var, timeslot_positions);
+
+        let block_end = &block_pos + Int::from_i64(i64::from(slots_required) - 1);
+
+        let outside_block = other_pos.lt(&block_pos) | other_pos.gt(&block_end);
+
+        self.tracker.assert_hard(
+            &self.optimizer,
+            &outside_block,
+            ConstraintError::BlockExclusion {
+                block_exam,
+                other_exam,
+                slots_required,
+            },
+        );
     }
 
     /// Add a soft constraint to minimize the number of exams a student has on the same day
