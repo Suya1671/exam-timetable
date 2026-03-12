@@ -277,16 +277,27 @@
           checks = self.checks.${system};
 
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+          buildInputs = with pkgs; [
+            librsvg
+            webkitgtk_4_1
+          ];
+
+          shellHook = ''
+            export XDG_DATA_DIRS="$GSETTINGS_SCHEMAS_PATH" # Needed on Wayland to report the correct display scale
+          '';
 
           packages = [
             pkgs.cargo-hakari
             pkgs.cargo-llvm-cov
-            pkgs.sqlx-cli
+            pkgs.cargo-tauri
+            pkgs.nodejs
+            pkgs.pnpm
+            pkgs.sea-orm-cli
             pkgs.nixd
             pkgs.clang
             pkgs.mold
-            # for rustrover
-            pkgs.rustup
+            pkgs.pkg-config
+            pkgs.wrapGAppsHook4
           ];
         };
       }

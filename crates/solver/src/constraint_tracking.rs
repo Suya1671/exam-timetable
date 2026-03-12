@@ -86,13 +86,15 @@ mod tests {
         tracker.assert_hard(
             &optimizer,
             &Bool::from_bool(false),
-            ConstraintError::DomainLowerBound { exam: 1 },
+            ConstraintError::DomainLowerBound {
+                session: entity::id::SessionId(1),
+            },
         );
         tracker.assert_hard(
             &optimizer,
             &Bool::from_bool(true),
             ConstraintError::DomainUpperBound {
-                exam: 1,
+                session: entity::id::SessionId(1),
                 n_timeslots: 3,
             },
         );
@@ -100,16 +102,22 @@ mod tests {
         assert_eq!(optimizer.check(&[]), SatResult::Unsat);
 
         let unsat_core_constraints = tracker.unsat_core_constraints(&optimizer, SatResult::Unsat);
-        assert!(unsat_core_constraints.contains(&ConstraintError::DomainLowerBound { exam: 1 }));
+        assert!(
+            unsat_core_constraints.contains(&ConstraintError::DomainLowerBound {
+                session: entity::id::SessionId(1)
+            })
+        );
 
         let debug = tracker.build_debug_info(&optimizer);
         assert!(debug
             .all_tracked_constraints
-            .contains(&ConstraintError::DomainLowerBound { exam: 1 }));
+            .contains(&ConstraintError::DomainLowerBound {
+                session: entity::id::SessionId(1)
+            }));
         assert!(debug
             .all_tracked_constraints
             .contains(&ConstraintError::DomainUpperBound {
-                exam: 1,
+                session: entity::id::SessionId(1),
                 n_timeslots: 3
             }));
     }

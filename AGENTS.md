@@ -10,10 +10,10 @@ All commands are run from the repo root.
 
 - Build workspace: `cargo build`
 - Build a crate: `cargo build -p solver`
-- Run all tests: `cargo test`
-- Run a crate's tests: `cargo test -p solver`
-- Run a single test (by name): `cargo test -p solver add_pair_constraint_enforces_allowed_pairs`
-- Run tests with output: `cargo test -p solver add_pair_constraint_enforces_allowed_pairs -- --nocapture`
+- Run all tests: `cargo nextest run`
+- Run a crate's tests: `cargo nextest run -p solver`
+- Run a single test (by name): `cargo nextest run -p solver add_pair_constraint_enforces_allowed_pairs`
+- Run tests with output: `cargo nextest run -p solver add_pair_constraint_enforces_allowed_pairs -- --nocapture`
 - Lint (clippy): `cargo clippy --all-targets --all-features`
 - Format: `cargo fmt`
 
@@ -32,7 +32,8 @@ General Rust conventions used in this repo:
 - Naming: Regular rust guidelines
 - Linting: `cargo clippy`
 - Types:
-  - IDs use type aliases in `crates/model/src/lib.rs` (e.g., `ExamId`, `TimeslotId`).
+  - IDs use newtypes in `crates/model/src/lib.rs` (e.g., `ExamId`, `TimeslotId`).
+  - Solver uses `SessionId` and `TimeslotIndex` wrappers (see `crates/solver/src/lib.rs`).
   - Use `i64` for Z3 integer values and mappings (Z3 uses `Int`).
   - Use `u32` for counts when reflecting schema fields like `slots_required`.
 - Error handling:
@@ -47,7 +48,7 @@ General Rust conventions used in this repo:
 
 Any newly created **function**, **struct**, or **enum variant** must include a notice:
 
-- Add `/// AI-generated (<agent/model name>).` on the item doc comment block (structs, functions, enum variants).
+- Add `/// AI-generated (GPT-5.2-codex).` on the item doc comment block (structs, functions, enum variants).
 - If a function already has doc comments, append the line with the notice.
 - Keep the notice to a single line, ASCII only.
 
@@ -87,8 +88,9 @@ When introducing a new hard/soft constraint, follow this checklist:
      `crates/solver/src/diagnostics.rs`.
 
 5) **Ordering & positions**
-   - Use a timeslot position map derived from ordered timeslots when reasoning about
-     consecutive windows or “between” relationships. Never compare raw IDs for time order.
+   - The solver operates on `TimeslotIndex` (ordered by date, slot). Map DB `TimeslotId`
+     to solver indices in the backend before constructing constraints.
+   - Never compare raw IDs for time order; always use ordered indices.
 
 6) **Tests**
    - Add unit tests in `crates/solver/src/lib.rs` to cover the new constraint logic.

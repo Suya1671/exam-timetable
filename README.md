@@ -5,11 +5,20 @@ This repository contains a Rust workspace for building an exam scheduling system
 ## Overview
 
 - `crates/model`: database models and shared ID types.
+- `crates/entity`: SeaORM entities generated from the SQLite schema.
 - `crates/solver`: Z3-backed scheduler and constraints.
 - `crates/backend`: database access, data prep, and wiring to the solver.
 
 Timeslots are ordered by `(date, slot)` when building any scheduling logic. Do not assume
 `TimeslotId` is in chronological order.
+
+## SeaORM schema sync (Tauri runtime)
+
+Entity-first schema sync should run in the Tauri app once the database connection is created:
+
+```rust
+db.get_schema_registry("entity::entity::*").sync(&db).await?;
+```
 
 ## Quick start
 
