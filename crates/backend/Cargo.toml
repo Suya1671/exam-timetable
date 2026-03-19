@@ -8,7 +8,7 @@ license.workspace = true
 entity = { version = "0.1.0", path = "../entity" }
 solver = { version = "0.1.0", path = "../solver" }
 hack = { version = "0.1.0", path = "../hack" }
-sea-orm = { version = "2.0.0-rc.34", features = ["sqlx-sqlite", "runtime-tokio", "macros"] }
+sea-orm = { version = "2.0.0-rc.37", features = ["sqlx-sqlite", "runtime-tokio", "macros"] }
 futures = "0.3.32"
 thiserror = "2.0.18"
 time = "0.3.47"

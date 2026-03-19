@@ -293,7 +293,6 @@
             pkgs.nodejs
             pkgs.pnpm
             pkgs.sea-orm-cli
-            pkgs.nixd
             pkgs.clang
             pkgs.mold
             pkgs.pkg-config
