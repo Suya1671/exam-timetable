@@ -1,5 +1,7 @@
 # Exam Timetable
 
+**WIP. Mostly personal project. Some bits are messy and partially vibe-coded/AI generated with little review. I plan to do a thorough review of all AI-marked areas closer to finalisation.**
+
 This repository contains a Rust workspace for building an exam scheduling system backed by Z3.
 
 ## Overview
