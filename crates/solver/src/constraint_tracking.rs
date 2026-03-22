@@ -1,8 +1,7 @@
 use std::collections::HashMap;
+use z3::{ast::Bool, Optimize};
 
-use z3::{ast::Bool, Optimize, SatResult};
-
-use crate::diagnostics::{ConstraintError, SolverDebugInfo};
+use crate::diagnostics::{ConstraintError};
 
 /// Tracks hard constraints asserted into Z3 and maps them back to typed
 /// scheduler constraints for diagnostics.
@@ -45,29 +44,11 @@ impl ConstraintTracker {
     pub fn unsat_core_constraints(
         &self,
         optimizer: &Optimize,
-        sat_result: SatResult,
-    ) -> Vec<ConstraintError> {
-        if sat_result != SatResult::Unsat {
-            return Vec::new();
-        }
-
+    ) -> impl Iterator<Item = &ConstraintError> {
         optimizer
             .get_unsat_core()
-            .iter()
-            .filter_map(|core| self.tracked_constraints.get(core))
-            .cloned()
-            .collect::<Vec<_>>()
-    }
-
-    /// Build shared debug context for solver error reporting.
-    ///
-    /// Includes a textual optimizer dump and all tracked hard constraints, which
-    /// provides context regardless of the specific error category.
-    pub fn build_debug_info(&self, optimizer: &Optimize) -> SolverDebugInfo {
-        SolverDebugInfo {
-            optimization_state: optimizer.to_string(),
-            all_tracked_constraints: self.tracked_constraints.values().cloned().collect(),
-        }
+            .into_iter()
+            .filter_map(|core| self.tracked_constraints.get(&core))
     }
 }
 
@@ -101,25 +82,13 @@ mod tests {
 
         assert_eq!(optimizer.check(&[]), SatResult::Unsat);
 
-        let unsat_core_constraints = tracker.unsat_core_constraints(&optimizer, SatResult::Unsat);
+        let mut unsat_core_constraints = tracker.unsat_core_constraints(&optimizer);
+        
         assert!(
-            unsat_core_constraints.contains(&ConstraintError::DomainLowerBound {
+            unsat_core_constraints.any(|err| err == &ConstraintError::DomainLowerBound {
                 session: entity::id::SessionId(1)
             })
         );
-
-        let debug = tracker.build_debug_info(&optimizer);
-        assert!(debug
-            .all_tracked_constraints
-            .contains(&ConstraintError::DomainLowerBound {
-                session: entity::id::SessionId(1)
-            }));
-        assert!(debug
-            .all_tracked_constraints
-            .contains(&ConstraintError::DomainUpperBound {
-                session: entity::id::SessionId(1),
-                n_timeslots: 3
-            }));
     }
 
     #[test]
@@ -129,11 +98,7 @@ mod tests {
 
         assert_eq!(optimizer.check(&[]), SatResult::Sat);
 
-        let debug = tracker.build_debug_info(&optimizer);
-        assert!(!debug.optimization_state.is_empty());
-        assert_eq!(debug.all_tracked_constraints.len(), 0);
-
-        let unsat_constraints = tracker.unsat_core_constraints(&optimizer, SatResult::Sat);
-        assert_eq!(unsat_constraints.len(), 0);
+        let unsat_constraints = tracker.unsat_core_constraints(&optimizer);
+        assert_eq!(unsat_constraints.count(), 0);
     }
 }

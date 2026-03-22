@@ -1,5 +1,12 @@
-//! SeaORM entity definitions.
-//! AI-generated (GPT-5.2-codex).
-
-pub mod entity;
+pub mod different_week_exams;
+pub mod enrolled_students;
+pub mod exam_allowed_timeslots;
+pub mod exam_denied_timeslots;
+pub mod exams;
 pub mod id;
+pub mod same_day_exams;
+pub mod schema;
+pub mod sessions;
+pub mod students;
+pub mod subjects;
+pub mod timeslots;

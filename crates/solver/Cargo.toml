@@ -6,10 +6,9 @@ license.workspace = true
 publish = false
 
 [dependencies]
-entity = { version = "0.1.0", path = "../entity" }
-z3 = "0.19.14"
+entity = { path = "../entity" }
+z3 = { version = "0.19.15", features = ["gh-release"] }
 hack = { version = "0.1", path = "../hack" }
 thiserror = "2.0.18"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-derive_more = { version = "1.0.0", features = ["display", "from", "into"] }
+derive_more = { version = "2.1.1", features = ["display", "from", "into"] }

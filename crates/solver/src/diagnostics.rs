@@ -1,4 +1,5 @@
 use entity::id::StudentId;
+use std::collections::HashMap;
 
 use crate::TimeslotIndex;
 use entity::id::SessionId;
@@ -20,7 +21,7 @@ pub enum ConstraintError {
         /// The session for which the upper-bound domain constraint was asserted.
         session: SessionId,
         /// The total number of available timeslots used as the exclusive upper bound.
-        n_timeslots: i64,
+        n_timeslots: u64,
     },
     /// A session was constrained to be assigned to one of a finite set of allowed timeslots.
     AllowedTimeslots {
@@ -30,11 +31,11 @@ pub enum ConstraintError {
         timeslots: Vec<TimeslotIndex>,
     },
     /// A session was constrained to avoid a specific timeslot.
-    DisallowedTimeslot {
+    DisallowedTimeslots {
         /// The session whose assignment was restricted.
         session: SessionId,
         /// A timeslot identifier that is forbidden for the exam.
-        timeslot: TimeslotIndex,
+        timeslots: Vec<TimeslotIndex>,
     },
     /// A student's exams were constrained to all occur in distinct timeslots.
     StudentDistinct {
@@ -54,14 +55,13 @@ pub enum ConstraintError {
         allowed_starts: Vec<TimeslotIndex>,
     },
     /// Another exam was constrained to not fall inside a multi-slot block.
-    /// AI-generated (GPT-5.2-codex).
     BlockExclusion {
         /// The multi-slot session defining the blocked window.
         block_session: SessionId,
         /// The exam that must remain outside the block.
         other_session: SessionId,
         /// The number of consecutive slots required by the block exam.
-        slots_required: u32,
+        all_slots: Vec<SessionId>,
     },
     /// Two exams were constrained to be assigned on the same day, consecutively.
     PairConstraint {
@@ -71,16 +71,10 @@ pub enum ConstraintError {
         session2: SessionId,
         allowed_pairs: Vec<(TimeslotIndex, TimeslotIndex)>,
     },
-}
-
-/// Shared, non-classifying debug context attached to solver errors.
-///
-/// This struct intentionally contains only supporting details. The actual
-/// failure category is represented by `SolverError`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SolverDebugInfo {
-    /// A textual dump of the optimizer state at the time diagnostics were built.
-    pub optimization_state: String,
-    /// All hard constraints that were tracked and asserted in the optimizer.
-    pub all_tracked_constraints: Vec<ConstraintError>,
+    /// A group of exams was constrained to be scheduled in separate timeslots, but were assigned to the same one.
+    SeparateExamGroups {
+        session1: SessionId,
+        session2: SessionId,
+        mapping: HashMap<TimeslotIndex, u64>,
+    },
 }

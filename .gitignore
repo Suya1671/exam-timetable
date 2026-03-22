@@ -4,3 +4,4 @@ result*
 /coverage/
 /**/*.profraw
 /**/*.profdata
+db.sqlite3

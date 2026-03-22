@@ -5,7 +5,9 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-sea-orm = { version = "2.0.0-rc.37", features = ["macros", "sqlx-sqlite", "schema-sync", "entity-registry"] }
+diesel = { version = "2.2.0", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "time"] }
 time = { version = "0.3.47", features = ["serde"] }
 serde = { version = "1.0.228", features = ["derive"] }
-derive_more = { version = "1.0.0", features = ["from", "into"] }
+derive_more = { version = "2.1.1", features = ["from", "into", "display"] }
+hack = { version = "0.1", path = "../hack" }
+diesel-derive-newtype = { git = "https://github.com/quodlibetor/diesel-derive-newtype.git" }

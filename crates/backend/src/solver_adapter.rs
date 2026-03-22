@@ -1,8 +1,8 @@
-use sea_orm::{DatabaseConnection, DbErr, EntityTrait, QueryOrder};
 use std::collections::HashMap;
 
-use entity::entity::{sessions, timeslots};
+use diesel::{ExpressionMethods, QueryDsl, QueryResult, RunQueryDsl, SqliteConnection};
 use entity::id::{SessionId, TimeslotId};
+use entity::schema::{session, timeslot};
 use itertools::Itertools;
 use solver::{ExamScheduler, TimeslotIndex as SolverTimeslotIndex};
 
@@ -15,23 +15,27 @@ struct TimeslotIndex {
     /// Chronologically ordered list of timeslot IDs.
     ordered: Vec<TimeslotId>,
     /// Mapping from timeslot ID to its chronological position index.
-    positions: HashMap<TimeslotId, i64>,
+    positions: HashMap<TimeslotId, u64>,
 }
 
 impl TimeslotIndex {
     /// Build a chronological index for timeslots.
-    pub async fn build_index(db: &DatabaseConnection) -> Result<TimeslotIndex, DbErr> {
-        let rows = timeslots::Entity::find()
-            .order_by_asc(timeslots::Column::Date)
-            .order_by_asc(timeslots::Column::Slot)
-            .all(db)
-            .await?;
-        let ordered = rows.iter().map(|ts| ts.id).collect::<Vec<_>>();
-        let positions = ordered
-            .iter()
-            .enumerate()
-            .map(|(idx, &id)| (id, idx as i64))
-            .collect();
+    pub fn build_index(db: &mut SqliteConnection) -> QueryResult<TimeslotIndex> {
+        let mut ordered = Vec::new();
+        let mut positions = HashMap::new();
+
+        let rows = timeslot::table
+            .order((timeslot::date.asc(), timeslot::slot.asc()))
+            .select(timeslot::id)
+            .load_iter(db)?;
+
+        for row in rows {
+            let id = row?;
+
+            positions.insert(id, ordered.len() as u64);
+            ordered.push(id);
+        }
+
         Ok(TimeslotIndex { ordered, positions })
     }
 }
@@ -44,15 +48,13 @@ pub struct SolverAdapter {
 
 impl SolverAdapter {
     /// Build solver sessions and mapping tables for exams/timeslots.
-    pub async fn new(db: &DatabaseConnection) -> Result<SolverAdapter, DbErr> {
-        let sessions = sessions::Entity::find()
-            .order_by_asc(sessions::Column::ExamId)
-            .order_by_asc(sessions::Column::Sequence)
-            .all(db)
-            .await?;
-        let session_ids = sessions.into_iter().map(|row| row.id).collect();
+    pub fn new(db: &mut SqliteConnection) -> QueryResult<SolverAdapter> {
+        let session_ids = session::table
+            .order((session::exam_id.asc(), session::sequence.asc()))
+            .select(session::id)
+            .load(db)?;
 
-        let timeslot_index = TimeslotIndex::build_index(db).await?;
+        let timeslot_index = TimeslotIndex::build_index(db)?;
 
         Ok(SolverAdapter {
             session_ids,
@@ -63,14 +65,16 @@ impl SolverAdapter {
     /// Map database timeslot ids to solver timeslot indices.
     ///
     /// Uses the chronological position map from `BackendTimeslotIndex` so ordering is stable.
-    fn map_timeslots_to_indices(&self, timeslots: &[TimeslotId]) -> Vec<SolverTimeslotIndex> {
+    fn map_timeslots_to_indices(
+        &self,
+        timeslots: impl Iterator<Item = TimeslotId>,
+    ) -> Vec<SolverTimeslotIndex> {
         timeslots
-            .iter()
             .map(|timeslot| {
                 let pos = self
                     .timeslot_index
                     .positions
-                    .get(timeslot)
+                    .get(&timeslot)
                     .expect("timeslot missing from positions map");
                 SolverTimeslotIndex(*pos)
             })
@@ -95,14 +99,14 @@ impl SolverAdapter {
     {
         day_groups
             .into_iter()
-            .map(|timeslots| self.map_timeslots_to_indices(&timeslots))
+            .map(|timeslots| self.map_timeslots_to_indices(timeslots.iter().copied()))
             .flat_map(|timeslots| timeslots.into_iter().tuple_combinations())
             .collect()
     }
 
     /// Map timeslot week groupings to solver indices.
     /// AI-generated (GPT-5.2-codex).
-    pub fn week_map<I>(&self, entries: I) -> HashMap<SolverTimeslotIndex, i64>
+    pub fn week_map<I>(&self, entries: I) -> HashMap<SolverTimeslotIndex, u64>
     where
         I: IntoIterator<Item = (TimeslotId, u8)>,
     {
@@ -138,16 +142,17 @@ impl SolverAdapter {
         &self,
         scheduler: &mut ExamScheduler,
         session_id: SessionId,
-        allowed_timeslots: &[TimeslotId],
-        disallowed_timeslots: &[TimeslotId],
+        allowed_timeslots: impl Iterator<Item = TimeslotId>,
+        disallowed_timeslots: impl Iterator<Item = TimeslotId>,
     ) {
-        if !allowed_timeslots.is_empty() {
-            let timeslot_indices = self.map_timeslots_to_indices(allowed_timeslots);
-            scheduler.add_allowed_timeslots(session_id, &timeslot_indices);
+        let timeslot_indices = self.map_timeslots_to_indices(allowed_timeslots);
+        if !timeslot_indices.is_empty() {
+            scheduler.add_allowed_timeslots(session_id, timeslot_indices);
         }
-        if !disallowed_timeslots.is_empty() {
-            let timeslot_indices = self.map_timeslots_to_indices(disallowed_timeslots);
-            scheduler.add_disallowed_timeslots(session_id, &timeslot_indices);
+
+        let timeslot_indices = self.map_timeslots_to_indices(disallowed_timeslots);
+        if !timeslot_indices.is_empty() {
+            scheduler.add_disallowed_timeslots(session_id, timeslot_indices);
         }
     }
 
@@ -162,7 +167,7 @@ mod tests {
 
     #[test]
     fn map_timeslots_to_solver_indices_uses_positions() {
-        let timeslots = vec![TimeslotId(7), TimeslotId(3), TimeslotId(9)];
+        let timeslots = [TimeslotId(7), TimeslotId(3), TimeslotId(9)];
         let timeslot_index = TimeslotIndex {
             ordered: vec![TimeslotId(3), TimeslotId(9), TimeslotId(7)],
             positions: HashMap::from([(TimeslotId(7), 2), (TimeslotId(3), 0), (TimeslotId(9), 1)]),
@@ -172,7 +177,7 @@ mod tests {
             session_ids: vec![SessionId(1)],
             timeslot_index,
         };
-        let mapped = mappings.map_timeslots_to_indices(&timeslots);
+        let mapped = mappings.map_timeslots_to_indices(timeslots.iter().copied());
         assert_eq!(
             mapped,
             vec![

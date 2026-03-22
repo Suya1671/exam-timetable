@@ -1,7 +1,14 @@
-use sea_orm::{DeriveActiveEnum, DeriveValueType, EnumIter};
+use diesel::{
+    backend::Backend,
+    deserialize::FromSql,
+    deserialize::FromSqlRow,
+    serialize::{Output, ToSql},
+    sql_types::Integer,
+    AsExpression,
+};
+use diesel_derive_newtype::DieselNewType;
 
 /// Identifier for an exam.
-/// AI-generated (GPT-5.2-codex).
 #[derive(
     Debug,
     Clone,
@@ -13,14 +20,13 @@ use sea_orm::{DeriveActiveEnum, DeriveValueType, EnumIter};
     Hash,
     serde::Serialize,
     serde::Deserialize,
-    DeriveValueType,
+    DieselNewType,
     derive_more::From,
     derive_more::Into,
 )]
-pub struct ExamId(pub i64);
+pub struct ExamId(pub i32);
 
 /// Identifier for a session.
-/// AI-generated (GPT-5.2-codex).
 #[derive(
     Debug,
     Clone,
@@ -33,14 +39,13 @@ pub struct ExamId(pub i64);
     serde::Serialize,
     serde::Deserialize,
     derive_more::Display,
-    DeriveValueType,
+    DieselNewType,
     derive_more::From,
     derive_more::Into,
 )]
-pub struct SessionId(pub i64);
+pub struct SessionId(pub i32);
 
 /// Identifier for a subject.
-/// AI-generated (GPT-5.2-codex).
 #[derive(
     Debug,
     Clone,
@@ -52,14 +57,13 @@ pub struct SessionId(pub i64);
     Hash,
     serde::Serialize,
     serde::Deserialize,
-    DeriveValueType,
+    DieselNewType,
     derive_more::From,
     derive_more::Into,
 )]
-pub struct SubjectId(pub i64);
+pub struct SubjectId(pub i32);
 
 /// Identifier for a timeslot.
-/// AI-generated (GPT-5.2-codex).
 #[derive(
     Debug,
     Clone,
@@ -71,14 +75,13 @@ pub struct SubjectId(pub i64);
     Hash,
     serde::Serialize,
     serde::Deserialize,
-    DeriveValueType,
+    DieselNewType,
     derive_more::From,
     derive_more::Into,
 )]
-pub struct TimeslotId(pub i64);
+pub struct TimeslotId(pub i32);
 
 /// Identifier for a student.
-/// AI-generated (GPT-5.2-codex).
 #[derive(
     Debug,
     Clone,
@@ -90,19 +93,50 @@ pub struct TimeslotId(pub i64);
     Hash,
     serde::Serialize,
     serde::Deserialize,
-    DeriveValueType,
+    DieselNewType,
     derive_more::From,
     derive_more::Into,
 )]
-pub struct StudentId(pub i64);
+pub struct StudentId(pub i32);
 
 /// Timeslot slot marker.
-/// AI-generated (GPT-5.2-codex).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "u8", db_type = "Integer")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, AsExpression, FromSqlRow)]
+#[diesel(sql_type = Integer)]
+#[repr(u8)]
 pub enum TimeslotSlot {
-    #[sea_orm(num_value = 0)]
     First,
-    #[sea_orm(num_value = 1)]
     Second,
+}
+
+impl<DB> ToSql<Integer, DB> for TimeslotSlot
+where
+    DB: Backend,
+    i32: ToSql<Integer, DB>,
+{
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, DB>) -> diesel::serialize::Result {
+        static FIRST_VALUE: i32 = 0;
+        static SECOND_VALUE: i32 = 1;
+
+        let value: &i32 = match self {
+            TimeslotSlot::First => &FIRST_VALUE,
+            TimeslotSlot::Second => &SECOND_VALUE,
+        };
+
+        <i32 as ToSql<Integer, DB>>::to_sql(value, out)
+    }
+}
+
+impl<DB> FromSql<Integer, DB> for TimeslotSlot
+where
+    DB: Backend,
+    i32: FromSql<Integer, DB>,
+{
+    fn from_sql(bytes: DB::RawValue<'_>) -> diesel::deserialize::Result<Self> {
+        let value = i32::from_sql(bytes)?;
+        match value {
+            0 => Ok(TimeslotSlot::First),
+            1 => Ok(TimeslotSlot::Second),
+            _ => Err(format!("invalid timeslot slot value: {value}").into()),
+        }
+    }
 }

@@ -1,14 +1,19 @@
-use std::collections::HashMap;
-
-use entity::id::{ExamId, SessionId, StudentId, TimeslotId};
+use diesel::{
+    alias, connection::DefaultLoadingMode, BoolExpressionMethods, ExpressionMethods, JoinOnDsl,
+    NullableExpressionMethods, QueryDsl, RunQueryDsl, SqliteConnection,
+};
+use entity::{
+    id::{SessionId, StudentId, SubjectId, TimeslotId},
+    schema::{
+        different_week_exams, enrolled_student, exam, exam_allowed_timeslot, exam_denied_timeslot,
+        same_day_exam, session, student, subject, timeslot,
+    },
+};
 use itertools::Itertools;
-use sea_orm::{ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder};
 use solver::ExamScheduler;
+use std::collections::{HashMap, HashSet};
 
-use crate::solver_adapter::SolverAdapter;
-use crate::SolveError;
-use entity::entity::timeslots;
-use entity::id::TimeslotSlot;
+use crate::{solver_adapter::SolverAdapter, SolveError};
 
 /// Backend-facing scheduler builder.
 pub struct SchedulerBuilder<'a> {
@@ -25,396 +30,228 @@ impl<'a> SchedulerBuilder<'a> {
         }
     }
 
-    /// Apply student clash constraints from session lists.
-    pub fn apply_student_clashes(
-        &mut self,
-        sessions_per_student: &HashMap<StudentId, Vec<SessionId>>,
-    ) {
-        self.scheduler.setup_students(sessions_per_student);
-    }
-
     /// Load and apply student clash constraints from the database.
-    /// AI-generated (GPT-5.2-codex).
-    pub async fn apply_student_clashes_from_db(
+    pub fn apply_student_clashes_from_db(
         &mut self,
-        db: &DatabaseConnection,
+        db: &mut SqliteConnection,
     ) -> Result<(), SolveError> {
-        let sessions = entity::entity::sessions::Entity::find().all(db).await?;
-        let exams = entity::entity::exams::Entity::find().all(db).await?;
-        let enrollments = entity::entity::enrolled_students::Entity::find()
-            .all(db)
-            .await?;
+        let rows = student::table
+            .inner_join(enrolled_student::table)
+            .inner_join(subject::table.on(enrolled_student::subject_id.eq(subject::id)))
+            .inner_join(exam::table.on(exam::subject_id.eq(subject::id)))
+            .inner_join(session::table.on(session::exam_id.eq(exam::id)))
+            .select((student::id, session::id))
+            .load_iter::<(StudentId, SessionId), DefaultLoadingMode>(db)?;
 
-        let subject_by_exam = exams
-            .into_iter()
-            .map(|exam| (exam.id, exam.subject_id))
-            .collect::<HashMap<_, _>>();
+        let mut map: HashMap<_, Vec<_>> = HashMap::new();
 
-        let mut sessions_per_student: HashMap<StudentId, Vec<SessionId>> = HashMap::new();
-        for session in sessions {
-            if let Some(subject_id) = subject_by_exam.get(&session.exam_id) {
-                for enrollment in enrollments
-                    .iter()
-                    .filter(|enrollment| enrollment.subject_id == *subject_id)
-                {
-                    sessions_per_student
-                        .entry(enrollment.student_id)
-                        .or_default()
-                        .push(session.id);
-                }
-            }
+        for row in rows {
+            let (student_id, session_id) = row?;
+            map.entry(student_id).or_default().push(session_id);
         }
 
-        self.apply_student_clashes(&sessions_per_student);
+        for (student, sessions) in map {
+            self.scheduler.setup_student(student, sessions);
+        }
+
         Ok(())
     }
 
     /// Load and apply allowed/disallowed timeslot constraints per exam.
-    /// AI-generated (GPT-5.2-codex).
-    pub async fn apply_timeslot_restrictions_for_exams_from_db(
+    pub fn apply_timeslot_restrictions_for_exams_from_db(
         &mut self,
-        db: &DatabaseConnection,
+        db: &mut SqliteConnection,
     ) -> Result<(), SolveError> {
-        let session_ids = entity::entity::sessions::Entity::find()
-            .all(db)
-            .await?
-            .into_iter()
-            .map(|session| session.id)
-            .collect::<Vec<_>>();
+        let rows = session::table
+            .left_join(
+                exam_allowed_timeslot::table
+                    .on(exam_allowed_timeslot::exam_id.eq(session::exam_id)),
+            )
+            .left_join(
+                exam_denied_timeslot::table.on(exam_denied_timeslot::exam_id.eq(session::exam_id)),
+            )
+            .select((
+                session::id,
+                exam_allowed_timeslot::timeslot_id.nullable(),
+                exam_denied_timeslot::timeslot_id.nullable(),
+            ))
+            .load_iter::<(SessionId, Option<TimeslotId>, Option<TimeslotId>), _>(db)?;
 
-        for session_id in session_ids {
-            let allowed_timeslots = build_allowed_timeslots_for_session(db, session_id).await?;
-            let disallowed_timeslots =
-                build_disallowed_timeslots_for_session(db, session_id).await?;
+        let mut restrictions: HashMap<SessionId, (HashSet<TimeslotId>, HashSet<TimeslotId>)> =
+            HashMap::new();
+
+        for row in rows {
+            let (session_id, allowed, denied) = row?;
+            let entry = restrictions.entry(session_id).or_default();
+
+            if let Some(a) = allowed {
+                entry.0.insert(a);
+            }
+
+            if let Some(d) = denied {
+                entry.1.insert(d);
+            }
+        }
+
+        for (session_id, (allowed_timeslots, disallowed_timeslots)) in restrictions {
             self.mappings.apply_timeslot_restrictions(
                 self.scheduler,
                 session_id,
-                &allowed_timeslots,
-                &disallowed_timeslots,
+                allowed_timeslots.iter().copied(),
+                disallowed_timeslots.iter().copied(),
             );
         }
         Ok(())
     }
 
     /// Load and apply distance preferences between exams of the same subject.
-    /// AI-generated (GPT-5.2-codex).
-    pub async fn apply_subject_exam_distance_from_db(
+    pub fn apply_subject_exam_distance_from_db(
         &self,
-        db: &DatabaseConnection,
+        db: &mut SqliteConnection,
     ) -> Result<(), SolveError> {
-        let subject_exam_groups = entity::entity::exams::Entity::find()
-            .all(db)
-            .await?
-            .into_iter()
-            .into_grouping_map_by(|exam| exam.subject_id)
-            .fold(Vec::new(), |mut acc, _subject, exam| {
-                acc.push(exam.id);
-                acc
-            });
+        let rows = exam::table
+            .inner_join(
+                session::table.on(session::exam_id.eq(exam::id).and(session::sequence.eq(0))),
+            )
+            .select((session::id, exam::subject_id))
+            .load_iter::<(SessionId, SubjectId), _>(db)?;
 
-        for (exam1, exam2) in subject_exam_groups
-            .values()
-            .flat_map(|exams| exams.iter().tuple_combinations())
-        {
-            apply_distance_preference_from_db(self.scheduler, db, *exam1, *exam2).await?;
+        let mut subject_session_groups: HashMap<_, Vec<_>> = HashMap::new();
+
+        for row in rows {
+            let (session_id, subject_id) = row?;
+            subject_session_groups
+                .entry(subject_id)
+                .or_default()
+                .push(session_id);
         }
+
+        for (session1, session2) in subject_session_groups
+            .into_values()
+            .flat_map(|sessions| sessions.into_iter().tuple_combinations())
+        {
+            self.scheduler.maximize_exam_distance(session1, session2);
+        }
+
         Ok(())
     }
 
     /// Load and apply same-day constraints between exam pairs.
-    /// AI-generated (GPT-5.2-codex).
-    pub async fn apply_same_day_constraints_from_db(
+    pub fn apply_same_day_constraints_from_db(
         &mut self,
-        db: &DatabaseConnection,
+        db: &mut SqliteConnection,
     ) -> Result<(), SolveError> {
-        let day_groups = group_days(db).await?.into_values();
+        let day_groups = group_days(db)?.into_values();
         let days = self.mappings.day_pairs(day_groups);
-        let morning_slots = morning_slots(db).await?;
 
-        let same_day_pairs = entity::entity::same_day_exams::Entity::find()
-            .all(db)
-            .await?
-            .into_iter()
-            .map(|row| (row.first_slot_exam_id, row.second_slot_exam_id))
-            .collect::<Vec<_>>();
+        let morning_timeslots: Vec<_> = timeslot::table
+            .filter(timeslot::slot.eq(0))
+            .select(timeslot::id)
+            .load_iter::<TimeslotId, DefaultLoadingMode>(db)?
+            .map_ok(|slot_id| self.mappings.timeslot_index_for_id(slot_id))
+            .try_collect()?;
 
-        for (first_exam, second_exam) in same_day_pairs {
-            apply_same_day_constraints_from_db(
-                self.scheduler,
-                db,
-                first_exam,
-                second_exam,
-                &morning_slots,
-                &days,
+        let (first_session, second_session) =
+            alias!(session as first_session, session as second_session);
+
+        let (first_id, first_exam_id, first_sequence) =
+            first_session.fields((session::id, session::exam_id, session::sequence));
+        let (second_id, second_exam_id, second_sequence) =
+            second_session.fields((session::id, session::exam_id, session::sequence));
+
+        let same_day_rows = same_day_exam::table
+            .inner_join(
+                first_session.on(first_exam_id
+                    .eq(same_day_exam::first_slot_exam_id)
+                    .and(first_sequence.eq(0))),
             )
-            .await?;
+            .inner_join(
+                second_session.on(second_exam_id
+                    .eq(same_day_exam::second_slot_exam_id)
+                    .and(second_sequence.eq(0))),
+            )
+            .select((first_id, second_id))
+            .load_iter::<(SessionId, SessionId), _>(db)?;
+
+        for row in same_day_rows {
+            let (first_session_id, second_session_id) = row?;
+
+            self.scheduler
+                .add_allowed_timeslots(first_session_id, morning_timeslots.clone());
+
+            self.scheduler
+                .add_pair_constraint(first_session_id, second_session_id, days.clone());
         }
+
         Ok(())
     }
 
     /// Load and apply week separation constraints between exam pairs.
-    /// AI-generated (GPT-5.2-codex).
-    pub async fn apply_week_separation_from_db(
-        &self,
-        db: &DatabaseConnection,
+    pub fn apply_week_separation_from_db(
+        &mut self,
+        db: &mut SqliteConnection,
     ) -> Result<(), SolveError> {
-        let week_entries = timeslots::Entity::find()
-            .all(db)
-            .await?
-            .into_iter()
-            .map(|row| (row.id, row.date.iso_week()))
-            .collect::<Vec<_>>();
+        let week_entries: Vec<_> = timeslot::table
+            .select((timeslot::id, timeslot::date))
+            .load_iter::<(TimeslotId, time::Date), DefaultLoadingMode>(db)?
+            .map_ok(|(id, date)| (id, date.iso_week()))
+            .try_collect()?;
+
         let week_map = self.mappings.week_map(week_entries);
 
-        let week_pairs = entity::entity::different_week_exams::Entity::find()
-            .all(db)
-            .await?
-            .into_iter()
-            .map(|row| (row.exam1_id, row.exam2_id))
-            .collect::<Vec<_>>();
+        let (first_session, second_session) =
+            alias!(session as first_session, session as second_session);
 
-        for (exam1, exam2) in week_pairs {
-            apply_week_separation_from_db(self.scheduler, db, exam1, exam2, &week_map).await?;
+        let (first_id, first_exam_id, first_sequence) =
+            first_session.fields((session::id, session::exam_id, session::sequence));
+        let (second_id, second_exam_id, second_sequence) =
+            second_session.fields((session::id, session::exam_id, session::sequence));
+
+        let week_pairs = different_week_exams::table
+            .inner_join(
+                first_session.on(first_exam_id
+                    .eq(different_week_exams::exam1_id)
+                    .and(first_sequence.eq(0))),
+            )
+            .inner_join(
+                second_session.on(second_exam_id
+                    .eq(different_week_exams::exam2_id)
+                    .and(second_sequence.eq(0))),
+            )
+            .select((first_id, second_id))
+            .load_iter::<(SessionId, SessionId), _>(db)?;
+
+        for row in week_pairs {
+            let (first_session_id, second_session_id) = row?;
+
+            self.scheduler.separate_exam_groups(
+                first_session_id,
+                second_session_id,
+                week_map.clone(),
+            );
         }
+
         Ok(())
     }
 }
 
-async fn build_allowed_timeslots_for_session(
-    db: &DatabaseConnection,
-    session_id: SessionId,
-) -> Result<Vec<TimeslotId>, SolveError> {
-    let exam_id = entity::entity::sessions::Entity::find_by_id(session_id)
-        .one(db)
-        .await?
-        .map(|session| session.exam_id)
-        .ok_or_else(|| sea_orm::DbErr::RecordNotFound("session missing".to_string()))?;
-
-    build_allowed_timeslots(db, exam_id).await
-}
-
-async fn build_disallowed_timeslots_for_session(
-    db: &DatabaseConnection,
-    session_id: SessionId,
-) -> Result<Vec<TimeslotId>, SolveError> {
-    let exam_id = entity::entity::sessions::Entity::find_by_id(session_id)
-        .one(db)
-        .await?
-        .map(|session| session.exam_id)
-        .ok_or_else(|| sea_orm::DbErr::RecordNotFound("session missing".to_string()))?;
-
-    build_disallowed_timeslots(db, exam_id).await
-}
-
-async fn apply_distance_preference_from_db(
-    scheduler: &ExamScheduler,
-    db: &DatabaseConnection,
-    exam1: ExamId,
-    exam2: ExamId,
-) -> Result<(), SolveError> {
-    let session1 = entity::entity::sessions::Entity::find()
-        .filter(entity::entity::sessions::Column::ExamId.eq(exam1))
-        .filter(entity::entity::sessions::Column::Sequence.eq(0))
-        .one(db)
-        .await?
-        .map(|session| session.id)
-        .ok_or_else(|| sea_orm::DbErr::RecordNotFound("session missing".to_string()))?;
-    let session2 = entity::entity::sessions::Entity::find()
-        .filter(entity::entity::sessions::Column::ExamId.eq(exam2))
-        .filter(entity::entity::sessions::Column::Sequence.eq(0))
-        .one(db)
-        .await?
-        .map(|session| session.id)
-        .ok_or_else(|| sea_orm::DbErr::RecordNotFound("session missing".to_string()))?;
-
-    scheduler.maximize_exam_distance(session1, session2);
-    Ok(())
-}
-
-async fn apply_same_day_constraints_from_db(
-    scheduler: &mut ExamScheduler,
-    db: &DatabaseConnection,
-    first_exam: ExamId,
-    second_exam: ExamId,
-    _morning_slots: &[TimeslotId],
-    days: &[(solver::TimeslotIndex, solver::TimeslotIndex)],
-) -> Result<(), SolveError> {
-    let first_session = entity::entity::sessions::Entity::find()
-        .filter(entity::entity::sessions::Column::ExamId.eq(first_exam))
-        .filter(entity::entity::sessions::Column::Sequence.eq(0))
-        .one(db)
-        .await?
-        .map(|session| session.id)
-        .ok_or_else(|| sea_orm::DbErr::RecordNotFound("session missing".to_string()))?;
-    let second_session = entity::entity::sessions::Entity::find()
-        .filter(entity::entity::sessions::Column::ExamId.eq(second_exam))
-        .filter(entity::entity::sessions::Column::Sequence.eq(0))
-        .one(db)
-        .await?
-        .map(|session| session.id)
-        .ok_or_else(|| sea_orm::DbErr::RecordNotFound("session missing".to_string()))?;
-
-    let morning_indices = timeslots::Entity::find()
-        .filter(timeslots::Column::Slot.eq(TimeslotSlot::First))
-        .order_by_asc(timeslots::Column::Date)
-        .order_by_asc(timeslots::Column::Slot)
-        .all(db)
-        .await?
-        .into_iter()
-        .enumerate()
-        .map(|(idx, _)| solver::TimeslotIndex(idx as i64))
-        .collect::<Vec<_>>();
-
-    scheduler.add_allowed_timeslots(first_session, &morning_indices);
-    scheduler.add_pair_constraint(first_session, second_session, days);
-    Ok(())
-}
-
-async fn apply_week_separation_from_db(
-    scheduler: &ExamScheduler,
-    db: &DatabaseConnection,
-    exam1: ExamId,
-    exam2: ExamId,
-    week_map: &HashMap<solver::TimeslotIndex, i64>,
-) -> Result<(), SolveError> {
-    let session1 = entity::entity::sessions::Entity::find()
-        .filter(entity::entity::sessions::Column::ExamId.eq(exam1))
-        .filter(entity::entity::sessions::Column::Sequence.eq(0))
-        .one(db)
-        .await?
-        .map(|session| session.id)
-        .ok_or_else(|| sea_orm::DbErr::RecordNotFound("session missing".to_string()))?;
-    let session2 = entity::entity::sessions::Entity::find()
-        .filter(entity::entity::sessions::Column::ExamId.eq(exam2))
-        .filter(entity::entity::sessions::Column::Sequence.eq(0))
-        .one(db)
-        .await?
-        .map(|session| session.id)
-        .ok_or_else(|| sea_orm::DbErr::RecordNotFound("session missing".to_string()))?;
-
-    scheduler.separate_exam_groups(session1, session2, week_map);
-    Ok(())
-}
-
-async fn morning_slots(db: &DatabaseConnection) -> Result<Vec<TimeslotId>, SolveError> {
-    let results = timeslots::Entity::find()
-        .filter(timeslots::Column::Slot.eq(TimeslotSlot::First))
-        .all(db)
-        .await?
-        .into_iter()
-        .map(|row| row.id)
-        .collect();
-
-    Ok(results)
-}
-
-async fn build_allowed_timeslots(
-    db: &DatabaseConnection,
-    exam: ExamId,
-) -> Result<Vec<TimeslotId>, SolveError> {
-    let mut results = Vec::new();
-    let direct = entity::entity::exam_allowed_timeslots::Entity::find()
-        .filter(entity::entity::exam_allowed_timeslots::Column::ExamId.eq(exam))
-        .all(db)
-        .await?
-        .into_iter()
-        .map(|row| row.timeslot_id);
-    results.extend(direct);
-
-    let subject_id = entity::entity::exams::Entity::find_by_id(exam)
-        .one(db)
-        .await?
-        .map(|row| row.subject_id)
-        .ok_or_else(|| DbErr::RecordNotFound("exam missing".to_string()))?;
-
-    let student_ids = entity::entity::enrolled_students::Entity::find()
-        .filter(entity::entity::enrolled_students::Column::SubjectId.eq(subject_id))
-        .all(db)
-        .await?
-        .into_iter()
-        .map(|row| row.student_id)
-        .collect::<Vec<_>>();
-    let student = entity::entity::student_allowed_timeslots::Entity::find()
-        .filter(entity::entity::student_allowed_timeslots::Column::StudentId.is_in(student_ids))
-        .all(db)
-        .await?
-        .into_iter()
-        .map(|row| row.timeslot_id);
-    results.extend(student);
-
-    let subject = entity::entity::subject_allowed_timeslots::Entity::find()
-        .filter(entity::entity::subject_allowed_timeslots::Column::SubjectId.eq(subject_id))
-        .all(db)
-        .await?
-        .into_iter()
-        .map(|row| row.timeslot_id);
-    results.extend(subject);
-
-    Ok(results.into_iter().unique().collect())
-}
-
-async fn build_disallowed_timeslots(
-    db: &DatabaseConnection,
-    exam: ExamId,
-) -> Result<Vec<TimeslotId>, SolveError> {
-    let mut results = Vec::new();
-    let direct = entity::entity::exam_denied_timeslots::Entity::find()
-        .filter(entity::entity::exam_denied_timeslots::Column::ExamId.eq(exam))
-        .all(db)
-        .await?
-        .into_iter()
-        .map(|row| row.timeslot_id);
-    results.extend(direct);
-
-    let subject_id = entity::entity::exams::Entity::find_by_id(exam)
-        .one(db)
-        .await?
-        .map(|row| row.subject_id)
-        .ok_or_else(|| DbErr::RecordNotFound("exam missing".to_string()))?;
-
-    let student_ids = entity::entity::enrolled_students::Entity::find()
-        .filter(entity::entity::enrolled_students::Column::SubjectId.eq(subject_id))
-        .all(db)
-        .await?
-        .into_iter()
-        .map(|row| row.student_id)
-        .collect::<Vec<_>>();
-    let student = entity::entity::student_denied_timeslots::Entity::find()
-        .filter(entity::entity::student_denied_timeslots::Column::StudentId.is_in(student_ids))
-        .all(db)
-        .await?
-        .into_iter()
-        .map(|row| row.timeslot_id);
-    results.extend(student);
-
-    let subject = entity::entity::subject_denied_timeslots::Entity::find()
-        .filter(entity::entity::subject_denied_timeslots::Column::SubjectId.eq(subject_id))
-        .all(db)
-        .await?
-        .into_iter()
-        .map(|row| row.timeslot_id);
-    results.extend(subject);
-
-    Ok(results.into_iter().unique().collect())
-}
-
 /// Groups timeslots by the calendar date.
-async fn group_days(
-    db: &DatabaseConnection,
+fn group_days(
+    db: &mut SqliteConnection,
 ) -> Result<HashMap<time::Date, Vec<TimeslotId>>, SolveError> {
-    let rows = timeslots::Entity::find()
-        .order_by_asc(timeslots::Column::Date)
-        .order_by_asc(timeslots::Column::Slot)
-        .all(db)
-        .await?;
-    Ok(rows
-        .into_iter()
-        .map(|row| (row.date, row.id))
-        .into_grouping_map_by(|(date, _)| *date)
-        .fold(Vec::new(), |mut acc, _date, (_parsed_date, id)| {
-            acc.push(id);
-            acc
-        }))
+    let rows = timeslot::table
+        .order((timeslot::date.asc(), timeslot::slot.asc()))
+        .select((timeslot::id, timeslot::date))
+        .load_iter::<(TimeslotId, time::Date), _>(db)?;
+
+    let mut groups: HashMap<_, Vec<_>> = HashMap::new();
+
+    for row in rows {
+        let (id, date) = row?;
+        groups.entry(date).or_default().push(id);
+    }
+
+    Ok(groups)
 }
 
 // TODO: move as integration test/final solver test
