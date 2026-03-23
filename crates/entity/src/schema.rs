@@ -18,6 +18,7 @@ diesel::table! {
     exam (id) {
         id -> Integer,
         subject_id -> Integer,
+        grade -> Integer,
         paper -> Integer,
         duration_hours -> Float,
         priority -> Integer,
@@ -67,6 +68,12 @@ diesel::table! {
     subject (id) {
         id -> Integer,
         name -> Text,
+    }
+}
+
+diesel::table! {
+    subject_grade (subject_id, grade) {
+        subject_id -> Integer,
         grade -> Integer,
     }
 }
@@ -87,6 +94,7 @@ diesel::joinable!(exam_allowed_timeslot -> timeslot (timeslot_id));
 diesel::joinable!(exam_denied_timeslot -> exam (exam_id));
 diesel::joinable!(exam_denied_timeslot -> timeslot (timeslot_id));
 diesel::joinable!(session -> exam (exam_id));
+diesel::joinable!(subject_grade -> subject (subject_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     different_week_exams,
@@ -98,5 +106,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     session,
     student,
     subject,
+    subject_grade,
     timeslot,
 );

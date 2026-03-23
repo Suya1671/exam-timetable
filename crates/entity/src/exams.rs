@@ -11,13 +11,17 @@ use crate::schema::exam;
     diesel::Selectable,
     diesel::Identifiable,
     diesel::Associations,
+    serde::Serialize,
+    specta::Type,
 )]
 #[diesel(table_name = exam)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
-#[diesel(belongs_to(crate::subjects::Subject, foreign_key = subject_id))]
+#[diesel(belongs_to(crate::subjects::Subject))]
+#[diesel(belongs_to(crate::subject_grade::SubjectGrade, foreign_key = subject_id))]
 pub struct Exam {
     pub id: ExamId,
     pub subject_id: SubjectId,
+    pub grade: i32,
     pub paper: i32,
     pub duration_hours: f32,
     pub priority: i32,

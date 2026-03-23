@@ -8,5 +8,6 @@ pub mod same_day_exams;
 pub mod schema;
 pub mod sessions;
 pub mod students;
+pub mod subject_grade;
 pub mod subjects;
 pub mod timeslots;

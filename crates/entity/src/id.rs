@@ -23,6 +23,7 @@ use diesel_derive_newtype::DieselNewType;
     DieselNewType,
     derive_more::From,
     derive_more::Into,
+    specta::Type,
 )]
 pub struct ExamId(pub i32);
 
@@ -42,6 +43,7 @@ pub struct ExamId(pub i32);
     DieselNewType,
     derive_more::From,
     derive_more::Into,
+    specta::Type,
 )]
 pub struct SessionId(pub i32);
 
@@ -60,6 +62,7 @@ pub struct SessionId(pub i32);
     DieselNewType,
     derive_more::From,
     derive_more::Into,
+    specta::Type,
 )]
 pub struct SubjectId(pub i32);
 
@@ -78,6 +81,7 @@ pub struct SubjectId(pub i32);
     DieselNewType,
     derive_more::From,
     derive_more::Into,
+    specta::Type,
 )]
 pub struct TimeslotId(pub i32);
 
@@ -96,6 +100,7 @@ pub struct TimeslotId(pub i32);
     DieselNewType,
     derive_more::From,
     derive_more::Into,
+    specta::Type,
 )]
 pub struct StudentId(pub i32);
 
@@ -114,12 +119,9 @@ where
     i32: ToSql<Integer, DB>,
 {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, DB>) -> diesel::serialize::Result {
-        static FIRST_VALUE: i32 = 0;
-        static SECOND_VALUE: i32 = 1;
-
         let value: &i32 = match self {
-            TimeslotSlot::First => &FIRST_VALUE,
-            TimeslotSlot::Second => &SECOND_VALUE,
+            TimeslotSlot::First => &0,
+            TimeslotSlot::Second => &1,
         };
 
         <i32 as ToSql<Integer, DB>>::to_sql(value, out)

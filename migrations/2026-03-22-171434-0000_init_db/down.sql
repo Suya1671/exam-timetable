@@ -4,6 +4,8 @@ DROP TABLE IF EXISTS different_week_exams;
 
 DROP TABLE IF EXISTS session;
 
+DROP TABLE IF EXISTS subject_grade;
+
 DROP TABLE IF EXISTS exam_denied_timeslot;
 
 DROP TABLE IF EXISTS same_day_exam;

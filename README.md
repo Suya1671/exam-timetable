@@ -10,6 +10,9 @@ This repository contains a Rust workspace for building an exam scheduling system
 - `crates/entity`: SeaORM entities generated from the SQLite schema.
 - `crates/solver`: Z3-backed scheduler and constraints.
 - `crates/backend`: database access, data prep, and wiring to the solver.
+- `frontend`: Sveltekit frontend
+    - Personal note: I despise some of the stuff I've pulled off in there out of principal but since I always know I have JS might as well save me brain power and use cursed stuff (_looking at you, tanstack forms_)
+- `frontend/app`: Tauri app for the frontend
 
 Timeslots are ordered by `(date, slot)` when building any scheduling logic. Do not assume
 `TimeslotId` is in chronological order.

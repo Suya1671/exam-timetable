@@ -5,9 +5,10 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-diesel = { version = "2.2.0", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "time"] }
+diesel = { version = "2.3.7", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "time"] }
 time = { version = "0.3.47", features = ["serde"] }
 serde = { version = "1.0.228", features = ["derive"] }
 derive_more = { version = "2.1.1", features = ["from", "into", "display"] }
 hack = { version = "0.1", path = "../hack" }
+specta = { version = "=2.0.0-rc.22", features = ["derive"] }
 diesel-derive-newtype = { git = "https://github.com/quodlibetor/diesel-derive-newtype.git" }

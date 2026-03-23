@@ -6,8 +6,14 @@ CREATE TABLE student (
 
 CREATE TABLE subject (
   id INTEGER NOT NULL PRIMARY KEY,
-  name TEXT NOT NULL,
-  grade INTEGER NOT NULL
+  name TEXT NOT NULL
+);
+
+CREATE TABLE subject_grade (
+  subject_id INTEGER NOT NULL,
+  grade INTEGER NOT NULL,
+  PRIMARY KEY (subject_id, grade),
+  FOREIGN KEY (subject_id) REFERENCES subject (id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE timeslot (
@@ -27,11 +33,14 @@ CREATE TABLE enrolled_student (
 CREATE TABLE exam (
   id INTEGER NOT NULL PRIMARY KEY,
   subject_id INTEGER NOT NULL,
+  grade INTEGER NOT NULL,
   paper INTEGER NOT NULL,
   duration_hours real_decimal NOT NULL,
   priority INTEGER NOT NULL,
   slots_required INTEGER NOT NULL,
-  FOREIGN KEY (subject_id) REFERENCES subject (id) ON DELETE CASCADE ON UPDATE CASCADE
+  UNIQUE (subject_id, grade, paper),
+  FOREIGN KEY (subject_id) REFERENCES subject (id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (subject_id, grade) REFERENCES subject_grade (subject_id, grade) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE exam_allowed_timeslot (
@@ -73,3 +82,20 @@ CREATE TABLE different_week_exams (
   FOREIGN KEY (exam1_id) REFERENCES exam (id) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (exam2_id) REFERENCES exam (id) ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+CREATE TRIGGER check_student_subject_grade BEFORE INSERT ON enrolled_student FOR EACH ROW BEGIN
+SELECT
+  CASE
+    WHEN NOT EXISTS (
+      SELECT
+        1
+      FROM
+        student s
+        JOIN subject_grade sg ON sg.subject_id = NEW.subject_id
+        AND sg.grade = s.grade
+      WHERE
+        s.id = NEW.student_id
+    ) THEN RAISE (ABORT, 'Student grade not allowed for subject')
+  END;
+
+END;
