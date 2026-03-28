@@ -1,0 +1,123 @@
+header[data-route='constraints'] {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	gap: 1rem;
+	align-items: end;
+
+	& > ul {
+		display: flex;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+		list-style: none;
+		padding: 0;
+	}
+
+	& li {
+		@apply --m3-label-large;
+		display: inline-flex;
+		align-items: center;
+		border-radius: var(--m3-shape-full);
+		padding: 0.375rem 0.75rem;
+		background: var(--m3c-secondary-container);
+		color: var(--m3c-on-secondary-container);
+	}
+}
+
+main[data-route='constraints'] {
+	display: grid;
+	gap: 1rem;
+
+	& .card {
+		border-radius: 1.25rem;
+		background: var(--m3c-surface-container-low);
+	}
+}
+
+section[data-constraint-card] {
+	display: grid;
+	gap: 0.75rem;
+
+	& > header {
+		display: grid;
+		gap: 0.25rem;
+		align-items: start;
+	}
+
+	& > header > h2 {
+		@apply --m3-title-large;
+		color: var(--m3c-on-surface);
+	}
+
+	& > header > p {
+		@apply --m3-body-medium;
+		color: var(--m3c-on-surface-variant);
+	}
+
+	& > form {
+		display: flex;
+		gap: 1rem;
+	}
+
+	& fieldset {
+		flex-grow: 1;
+		display: grid;
+		gap: 0.75rem;
+		padding: 1rem;
+		border: 1px solid var(--m3c-outline-variant);
+		border-radius: 1rem;
+		background: var(--m3c-surface-container-highest);
+	}
+
+	& legend {
+		@apply --m3-title-small;
+		color: var(--m3c-on-surface-variant);
+		padding-inline: 0.25rem;
+	}
+
+	& > footer {
+		margin-top: 0.75rem;
+		display: flex;
+		gap: 0.75rem;
+		align-items: center;
+		flex-wrap: wrap;
+	}
+
+	& > ul {
+		display: grid;
+		gap: 0.25rem;
+		padding: 0.25rem;
+		border-radius: 1rem;
+		background: var(--m3c-surface-container);
+		list-style: none;
+
+		& li {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 0.75rem;
+			padding: 0.25rem 0.35rem;
+		}
+
+		& li > span {
+			@apply --m3-body-medium;
+			color: var(--m3c-on-surface);
+		}
+	}
+}
+
+@media (width >= 60rem) {
+	main[data-route='constraints'] {
+		gap: 1.25rem;
+	}
+
+	section[data-constraint-card] {
+		& > form {
+			gap: 1.25rem;
+		}
+
+		& > footer {
+			margin-top: 1rem;
+		}
+	}
+}

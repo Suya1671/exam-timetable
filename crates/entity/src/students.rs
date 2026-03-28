@@ -14,12 +14,3 @@ pub struct Student {
     pub name: String,
     pub grade: i32,
 }
-
-/// AI-generated (GPT-5.2-codex).
-#[derive(Debug, Clone, PartialEq, Eq, diesel::Insertable)]
-#[diesel(table_name = student)]
-#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
-pub struct NewStudent {
-    pub name: String,
-    pub grade: i32,
-}

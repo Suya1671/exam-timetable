@@ -1,7 +1,10 @@
 use diesel::{Connection, SqliteConnection, connection::SimpleConnection};
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use rusqlite::Connection as RusqliteConnection;
+use slab::Slab;
+use specta_typescript::BigIntExportBehavior;
 use std::sync::Mutex;
+use std::sync::mpsc;
 use tauri::{App, Manager};
 use tracing::info;
 
@@ -18,21 +21,34 @@ const SQLITE_PRAGMAS: &str = r#"
     PRAGMA wal_checkpoint(TRUNCATE);
 "#;
 
-pub type DbConn = Mutex<SqliteConnection>;
-pub type SqlProxyConn = Mutex<RusqliteConnection>;
+type DbConn = Mutex<SqliteConnection>;
+type SqlProxyConn = Mutex<RusqliteConnection>;
+type SolveSessions = Mutex<Slab<mpsc::Sender<api::SolveSessionCommand>>>;
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
+pub struct AppState {
+    pub db_conn: DbConn,
+    pub sql_proxy_conn: SqlProxyConn,
+    pub solve_sessions: SolveSessions,
+}
+
+pub async fn run() {
+    let router = taurpc::Router::new()
+        .export_config(taurpc::Typescript::default().bigint(BigIntExportBehavior::Number))
+        .merge(ApiImpl.into_handler());
+
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(taurpc::create_ipc_handler(ApiImpl.into_handler()))
+        .invoke_handler(router.into_handler())
         .setup(|app| {
             let db_conn = establish_connection(app);
             let sql_proxy_conn = establish_sql_proxy_connection(app);
 
-            app.manage(Mutex::new(db_conn));
-            app.manage(Mutex::new(sql_proxy_conn));
+            app.manage(AppState {
+                db_conn: Mutex::new(db_conn),
+                sql_proxy_conn: Mutex::new(sql_proxy_conn),
+                solve_sessions: Mutex::new(Slab::new()),
+            });
 
             Ok(())
         })
@@ -51,7 +67,7 @@ fn establish_connection(app: &App) -> SqliteConnection {
         .unwrap_or_else(|_| panic!("Error connecting to the database: {}", database_url));
 
     conn.batch_execute(SQLITE_PRAGMAS)
-    .expect("Failed to set SQLite pragmas");
+        .expect("Failed to set SQLite pragmas");
 
     conn.run_pending_migrations(MIGRATIONS)
         .expect("Failed to run database migrations");

@@ -292,7 +292,7 @@
             pkgs.cargo-tauri
             pkgs.nodejs
             pkgs.pnpm
-            pkgs.sea-orm-cli
+            pkgs.diesel-cli
             pkgs.clang
             pkgs.mold
             pkgs.pkg-config

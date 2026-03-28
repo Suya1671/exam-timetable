@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// These values are used to map unsat-core atoms back to domain-level scheduler
 /// constraints for human-readable diagnostics.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 pub enum ConstraintError {
     /// A session was constrained to be assigned to a non-negative timeslot index.
     DomainLowerBound {
@@ -70,6 +70,14 @@ pub enum ConstraintError {
         /// The second exam in the pairwise constraint.
         session2: SessionId,
         allowed_pairs: Vec<(TimeslotIndex, TimeslotIndex)>,
+    },
+    /// Two exams were constrained to be assigned in the exact same timeslot.
+    /// AI-generated (GPT-5.3-codex).
+    SameTime {
+        /// The first session in the same-time constraint.
+        session1: SessionId,
+        /// The second session in the same-time constraint.
+        session2: SessionId,
     },
     /// A group of exams was constrained to be scheduled in separate timeslots, but were assigned to the same one.
     SeparateExamGroups {

@@ -22,12 +22,3 @@ pub struct Session {
     pub exam_id: ExamId,
     pub sequence: i32,
 }
-
-/// AI-generated (GPT-5.2-codex).
-#[derive(Debug, Clone, PartialEq, diesel::Insertable)]
-#[diesel(table_name = session)]
-#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
-pub struct NewSession {
-    pub exam_id: ExamId,
-    pub sequence: i32,
-}

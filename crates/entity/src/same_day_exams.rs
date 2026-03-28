@@ -4,14 +4,7 @@ use crate::id::ExamId;
 use crate::schema::same_day_exam;
 
 #[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    diesel::Queryable,
-    diesel::Selectable,
-    diesel::Identifiable,
-    diesel::Insertable,
+    Debug, Clone, PartialEq, Eq, diesel::Queryable, diesel::Selectable, diesel::Identifiable,
 )]
 #[diesel(table_name = same_day_exam)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
@@ -19,5 +12,4 @@ use crate::schema::same_day_exam;
 pub struct SameDayExam {
     pub first_slot_exam_id: ExamId,
     pub second_slot_exam_id: ExamId,
-    pub date: String,
 }

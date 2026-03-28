@@ -10,22 +10,23 @@ edition = "2024"
 # You can choose to publish this crate: see https://docs.rs/cargo-hakari/latest/cargo_hakari/publishing.
 publish = false
 
+[package.metadata.cargo-machete]
+ignored = ["either", "form_urlencoded", "libc", "log", "memchr", "percent-encoding", "phf_shared-93f6ce9d446188ac", "phf_shared-a6292c17cd707f01", "proc-macro2", "regex", "regex-automata", "regex-syntax", "schemars", "semver", "serde", "serde_core", "serde_json", "specta", "stable_deref_trait", "tauri-utils", "uuid", "specta-macros", "syn"]
+
 # The parts of the file between the BEGIN HAKARI SECTION and END HAKARI SECTION comments
 # are managed by hakari.
 
 ### BEGIN HAKARI SECTION
 [dependencies]
 either = { version = "1", features = ["use_std"] }
-form_urlencoded = { version = "1" }
 libc = { version = "0.2" }
-log = { version = "0.4", default-features = false, features = ["std"] }
 memchr = { version = "2" }
 percent-encoding = { version = "2" }
 phf_shared-93f6ce9d446188ac = { package = "phf_shared", version = "0.10", default-features = false, features = ["std"] }
 phf_shared-a6292c17cd707f01 = { package = "phf_shared", version = "0.11" }
 proc-macro2 = { version = "1", features = ["span-locations"] }
 regex = { version = "1" }
-regex-automata = { version = "0.4", default-features = false, features = ["dfa-build", "dfa-onepass", "hybrid", "meta", "nfa-backtrack", "perf-inline", "perf-literal", "std", "unicode"] }
+regex-automata = { version = "0.4", default-features = false, features = ["dfa-onepass", "hybrid", "meta", "nfa-backtrack", "perf-inline", "perf-literal", "std", "unicode"] }
 regex-syntax = { version = "0.8" }
 schemars = { version = "0.8", features = ["preserve_order", "url", "uuid1"] }
 semver = { version = "1", features = ["serde"] }
@@ -39,16 +40,14 @@ uuid = { version = "1", features = ["serde", "v4"] }
 
 [build-dependencies]
 either = { version = "1", features = ["use_std"] }
-form_urlencoded = { version = "1" }
 libc = { version = "0.2" }
-log = { version = "0.4", default-features = false, features = ["std"] }
 memchr = { version = "2" }
 percent-encoding = { version = "2" }
 phf_shared-93f6ce9d446188ac = { package = "phf_shared", version = "0.10", default-features = false, features = ["std"] }
 phf_shared-a6292c17cd707f01 = { package = "phf_shared", version = "0.11" }
 proc-macro2 = { version = "1", features = ["span-locations"] }
 regex = { version = "1" }
-regex-automata = { version = "0.4", default-features = false, features = ["dfa-build", "dfa-onepass", "hybrid", "meta", "nfa-backtrack", "perf-inline", "perf-literal", "std", "unicode"] }
+regex-automata = { version = "0.4", default-features = false, features = ["dfa-onepass", "hybrid", "meta", "nfa-backtrack", "perf-inline", "perf-literal", "std", "unicode"] }
 regex-syntax = { version = "0.8" }
 schemars = { version = "0.8", features = ["preserve_order", "url", "uuid1"] }
 semver = { version = "1", features = ["serde"] }

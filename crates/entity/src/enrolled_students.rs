@@ -14,7 +14,6 @@ use crate::schema::enrolled_student;
     diesel::Selectable,
     diesel::Identifiable,
     diesel::Associations,
-    diesel::Insertable,
 )]
 #[diesel(table_name = enrolled_student)]
 #[diesel(primary_key(student_id, subject_id))]

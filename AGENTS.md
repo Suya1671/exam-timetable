@@ -1,104 +1,168 @@
 _note for people: this project is **not** vibe-coded. Agents were used to do stuff I did not want to do myself or not absolutely critical to functionality. I don't like making error messages._
 # AGENTS Guide
 
-This file documents how agentic coders should work in this repo: how to build/test, expected
-style conventions, and how to extend the solver safely.
+This file is for agentic coding assistants working in this repository.
+It covers build/test/lint commands, code style, architecture, and safe extension patterns.
 
-## Commands
+## Repository Layout
 
-All commands are run from the repo root.
+- `crates/model`: shared domain types/newtypes.
+- `crates/entity`: Diesel entities generated from SQLite schema.
+- `crates/solver`: Z3-based scheduler and constraint logic.
+- `crates/backend`: backend data access + solver wiring.
+- `frontend`: SvelteKit app (Svelte 5, async compiler enabled, Drizzle ORM).
+- `frontend/app`: Tauri Rust host app (`app` crate in workspace).
+- `migrations`: SQL migrations.
+- `docs/coverage.md`: coverage workflow.
 
-- Build workspace: `cargo build`
-- Build a crate: `cargo build -p solver`
-- Run all tests: `cargo nextest run`
-- Run a crate's tests: `cargo nextest run -p solver`
-- Run a single test (by name): `cargo nextest run -p solver add_pair_constraint_enforces_allowed_pairs`
-- Run tests with output: `cargo nextest run -p solver add_pair_constraint_enforces_allowed_pairs -- --nocapture`
-- Lint (clippy): `cargo clippy --all-targets --all-features`
+## Core Commands
+
+Run from repo root unless noted.
+
+### Rust workspace
+
+- Build all: `cargo build`
+- Build one crate: `cargo build -p solver`
+- Test all: `cargo nextest run`
+- Test one crate: `cargo nextest run -p solver`
+- Test one test by name: `cargo nextest run -p solver add_pair_constraint_enforces_allowed_pairs`
+- Test one with stdout: `cargo nextest run -p solver add_pair_constraint_enforces_allowed_pairs -- --nocapture`
+- Lint: `cargo clippy --all-targets --all-features`
 - Format: `cargo fmt`
 
-Coverage shortcuts (see `docs/coverage.md` and `.cargo/config.toml`):
+### Coverage
 
 - Summary: `cargo cov`
 - HTML: `cargo cov-html`
 - LCOV: `cargo cov-lcov`
 - Cobertura: `cargo cov-cobertura`
 
-## Code Style
+### Frontend (run in `frontend/`)
 
-General Rust conventions used in this repo:
+- Install deps: `pnpm i`
+- Dev server: `pnpm dev`
+- Build: `pnpm build`
+- Type/Svelte checks: `pnpm check`
+- Check in watch mode: `pnpm check:watch`
+- Lint: `pnpm lint`
+- Format: `pnpm format`
+- Drizzle pull: `pnpm db:pull`
+- Tauri dev/build bridge: `pnpm tauri`
 
-- Formatting: `cargo fmt` (rustfmt defaults).
-- Naming: Regular rust guidelines
-- Linting: `cargo clippy`
-- Types:
-  - IDs use newtypes in `crates/model/src/lib.rs` (e.g., `ExamId`, `TimeslotId`).
-  - Solver uses `SessionId` and `TimeslotIndex` wrappers (see `crates/solver/src/lib.rs`).
-  - Use `i64` for Z3 integer values and mappings (Z3 uses `Int`).
-  - Use `u32` for counts when reflecting schema fields like `slots_required`.
-- Error handling:
-  - `thiserror` is the standard error type; keep variants descriptive.
-  - For solver constraints, add new `ConstraintError` variants in
-    `crates/solver/src/diagnostics.rs` and register them via `ConstraintTracker`.
-- Documentation:
-  - Public methods have doc comments in the solver; follow the existing tone.
-  - Avoid adding comments unless the logic is non-obvious.
+### Tauri app
 
-### AI-generated label requirement
+- Rust crate path: `frontend/app`
+- Included in root workspace (`Cargo.toml` members include `frontend/app`).
 
-Any newly created **function**, **struct**, or **enum variant** must include a notice:
+## Testing Notes
 
-- Add `/// AI-generated (GPT-5.2-codex).` on the item doc comment block (structs, functions, enum variants).
-- If a function already has doc comments, append the line with the notice.
-- Keep the notice to a single line, ASCII only.
+- Prefer `cargo nextest` for Rust tests.
+- For targeted debugging, run a single test name first before full suite.
+- Frontend currently has check/lint workflows; no dedicated unit-test runner is configured here.
 
-Also include change reasoning in the final agent response (one or two bullets describing
-why the change was made).
+## Formatting, Imports, and Naming
 
-## Architecture Overview
+### Rust
 
-- `crates/model`: database models and shared ID types.
-- `crates/solver`: Z3-backed scheduler and constraints.
-- `crates/backend`: database access, data prep, and wiring to the solver.
+- Use rustfmt defaults via `cargo fmt`.
+- Keep imports grouped logically; remove unused imports.
+- Naming:
+  - Types/traits: `PascalCase`
+  - Functions/modules/fields: `snake_case`
+  - Constants: `SCREAMING_SNAKE_CASE`
+- Follow crate-level conventions before introducing new patterns.
 
-Timeslots are ordered by `(date, slot)` when building any scheduling logic. Do not assume
-`TimeslotId` is in chronological order.
+### Frontend (TypeScript/Svelte)
 
-## Adding or Changing Constraints
+- Prettier config enforces tabs, single quotes, no trailing commas, print width 100.
+- ESLint + `typescript-eslint` + `eslint-plugin-svelte` are enabled.
+- Prefer explicit, narrow types for form values and data transforms.
+- Use existing alias conventions (`$lib`, route-local `./data`, `./forms`).
+- Keep component imports stable and remove unused imports aggressively.
 
-When introducing a new hard/soft constraint, follow this checklist:
+## Type and Data Guidelines
 
-1) **Model the data**
-   - Add schema fields or join tables in migrations if needed.
-   - Add or reuse model types in `crates/model/src/lib.rs`.
+- IDs in Rust should use existing newtypes from `crates/model/src/lib.rs` when available.
+- Solver layer:
+  - Keep `SessionId` / `TimeslotIndex` wrappers where already used.
+  - Use `i64` for Z3 integer-domain mappings.
+  - Use `u32` for schema-like count fields (`slots_required`, etc.) when appropriate.
+- Do not compare raw `TimeslotId` for chronology; use ordered `(date, slot)` or mapped indices.
 
-2) **Backend data prep**
-   - Load the required data (SQLx queries in `crates/backend/src/lib.rs`).
-   - Build any helper maps/arrays (e.g., day groupings, consecutive windows).
-   - Prefer grouping and deduping to reduce redundant solver constraints.
+## Error Handling Guidelines
 
-3) **Solver API**
-   - Add a method in `crates/solver/src/lib.rs` for the new constraint.
-   - Hard constraints should be asserted using `ConstraintTracker::assert_hard` so
-     infeasibility diagnostics are meaningful.
-   - Soft constraints should use `optimizer.assert_soft(...)` or `minimize/maximize`.
+- Rust:
+  - Use `thiserror` for domain errors.
+  - Keep variants descriptive and actionable.
+  - In solver hard constraints, add/update `ConstraintError` in `crates/solver/src/diagnostics.rs`
+    and register via `ConstraintTracker`.
+- Frontend:
+  - Prefer validating at form boundaries.
+  - Keep user-facing errors concise and consistent with existing tone.
 
-4) **Diagnostics**
-   - Add a `ConstraintError` variant for new hard constraints in
-     `crates/solver/src/diagnostics.rs`.
+## Frontend Infrastructure Notes
 
-5) **Ordering & positions**
-   - The solver operates on `TimeslotIndex` (ordered by date, slot). Map DB `TimeslotId`
-     to solver indices in the backend before constructing constraints.
-   - Never compare raw IDs for time order; always use ordered indices.
+- Svelte compiler async mode is enabled (`frontend/svelte.config.js`), so top-level `await` in
+  component markup is valid and used in this repo.
+- SvelteKit uses `@sveltejs/adapter-static` with fallback `index.html` for Tauri-friendly builds.
+- Drizzle config outputs generated DB files under `frontend/src/lib/db`.
+  Treat generated files carefully and avoid manual edits unless intentional.
+- Current route organization increasingly uses route-local modules:
+  - `+page.svelte` for orchestration/UI
+  - `data.ts` for data access
+  - `forms.ts` for shared validators/form helpers
+  - dedicated dialog/components for complex UI blocks
 
-6) **Tests**
-   - Add unit tests in `crates/solver/src/lib.rs` to cover the new constraint logic.
-   - Use small timeslot/exam sets to keep solver tests fast and deterministic.
-      - Unless writing integration tests/bigger multi-constraint tests.
+## AI-Generated Annotation Requirement
 
-### Multi-slot exams pattern (example)
+Any newly created **function**, **struct**, or **enum variant** must include:
 
-- Treat the assignment variable as the **start** slot of a block.
-- Build allowed start windows based on ordered timeslots.
-- Constrain other exams with a positional map (e.g., “outside the block”).
+- Rust: `/// AI-generated (<Model/harness name>).`
+- Frontend/TS/JSDoc: `/** AI-generated (<Model/harness name>). */`
+- If doc comments already exist, append a single-line notice.
+- Keep notice ASCII-only.
+
+Also include 1-2 bullets in your final response explaining *why* the change was made.
+
+## Constraint Extension Checklist
+
+When adding/changing hard or soft constraints:
+
+1. Model data
+   - Add migration/schema changes if needed.
+   - Reuse/add model types in `crates/model`.
+
+2. Backend prep
+   - Load required rows in backend data prep.
+   - Build helper maps/windows and dedupe aggressively.
+
+3. Solver API
+   - Add/extend solver methods in `crates/solver/src/lib.rs`.
+   - Hard constraints: assert via `ConstraintTracker::assert_hard`.
+   - Soft constraints: optimizer soft assertions/objectives.
+
+4. Diagnostics
+   - Add/update diagnostics for new infeasibility sources.
+
+5. Ordering
+   - Always map to ordered timeslot positions before temporal logic.
+
+6. Tests
+   - Add focused unit tests with small deterministic datasets.
+   - Run targeted test first, then full crate/workspace tests.
+
+### Multi-slot exam pattern
+
+- Model assignment as **start slot**.
+- Build allowed start windows from ordered timeslots.
+- Constrain overlap/position relative to the occupied block.
+
+## Agent Workflow Expectations
+
+- Prefer minimal, local changes that match existing style.
+- Do not rewrite large files when extracting focused modules is enough.
+- For big Svelte pages, prefer extracting dialogs/sections into components and moving query/form
+  helpers into route-local `data.ts` / `forms.ts`.
+- Before finishing:
+  - run relevant checks (`cargo` and/or `pnpm check`)
+  - report any pre-existing failures separately from new regressions.

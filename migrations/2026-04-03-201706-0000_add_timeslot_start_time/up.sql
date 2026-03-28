@@ -1,0 +1,9 @@
+ALTER TABLE timeslot
+ADD COLUMN start_time TEXT NOT NULL DEFAULT '08:00:00';
+
+UPDATE timeslot
+SET start_time = CASE slot
+  WHEN 0 THEN '08:00:00'
+  WHEN 1 THEN '13:00:00'
+  ELSE '08:00:00'
+END;

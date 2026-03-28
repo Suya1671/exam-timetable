@@ -1,85 +1,161 @@
-use rusqlite::types::ValueRef;
-use tauri::{AppHandle, Manager, Runtime};
+use std::sync::mpsc;
+use std::thread;
+use std::{collections::HashMap, sync::mpsc::TryRecvError};
 
+use entity::id::{SessionId, TimeslotId};
+use rusqlite::types::{Value, ValueRef};
+use tauri::{AppHandle, Manager, Runtime, ipc::Channel};
+
+/// AI-generated (GPT-5.3-codex).
 #[derive(Debug, thiserror::Error, serde::Serialize, specta::Type)]
-pub enum ApiError {
-    /// AI-generated (GPT-5.2-codex).
+pub enum SqlError {
+    /// AI-generated (GPT-5.3-codex).
     #[error("SQL proxy error: {0}")]
-    SqlProxyError(String),
+    SqlProxy(String),
+    /// AI-generated (GPT-5.3-codex).
+    #[error("Lock poison error: {0}")]
+    LockPoison(String),
 }
 
-/// AI-generated (GPT-5.2-codex).
+/// AI-generated (GPT-5.3-codex).
+#[derive(Debug, thiserror::Error, serde::Serialize, specta::Type)]
+pub enum InitSolverError {
+    /// AI-generated (GPT-5.3-codex).
+    #[error("Solver initialization lock error: {0}")]
+    LockPoison(String),
+    /// AI-generated (GPT-5.3-codex).
+    #[error("Solver initialization error: {0}")]
+    Solver(String),
+    /// AI-generated (GPT-5.3-codex).
+    #[error("Solver initialization receive error: {0}")]
+    Recv(String),
+}
+
+/// AI-generated (GPT-5.3-codex).
+#[derive(Debug, thiserror::Error, serde::Serialize, specta::Type)]
+pub enum SolveSessionControlError {
+    /// AI-generated (GPT-5.3-codex).
+    #[error("Lock poison error: {0}")]
+    LockPoison(String),
+    /// AI-generated (GPT-5.3-codex).
+    #[error("Control channel send error: {0}")]
+    Send(String),
+    /// AI-generated (GPT-5.3-codex).
+    #[error("Invalid session id: {0}")]
+    InvalidSessionId(usize),
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
 pub enum SqlParam {
-    /// AI-generated (GPT-5.2-codex).
     Null,
-    /// AI-generated (GPT-5.2-codex).
     Bool(bool),
-    /// AI-generated (GPT-5.2-codex).
     Int(i32),
-    /// AI-generated (GPT-5.2-codex).
     Float(f64),
-    /// AI-generated (GPT-5.2-codex).
     Text(String),
 }
 
-/// AI-generated (GPT-5.2-codex).
+impl From<SqlParam> for Value {
+    fn from(param: SqlParam) -> Self {
+        match param {
+            SqlParam::Null => rusqlite::types::Value::Null,
+            SqlParam::Bool(boolean) => rusqlite::types::Value::Integer(i64::from(boolean)),
+            SqlParam::Int(integer) => rusqlite::types::Value::Integer(i64::from(integer)),
+            SqlParam::Float(float) => rusqlite::types::Value::Real(float),
+            SqlParam::Text(text) => rusqlite::types::Value::Text(text),
+        }
+    }
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
 pub enum SqlValue {
-    /// AI-generated (GPT-5.2-codex).
     Null,
-    /// AI-generated (GPT-5.2-codex).
     Bool(bool),
-    /// AI-generated (GPT-5.2-codex).
     Int(i32),
-    /// AI-generated (GPT-5.2-codex).
     Float(f64),
-    /// AI-generated (GPT-5.2-codex).
     Text(String),
-    /// AI-generated (GPT-5.2-codex).
     Blob(Vec<u8>),
 }
 
-/// AI-generated (GPT-5.2-codex).
+impl From<ValueRef<'_>> for SqlValue {
+    fn from(value: ValueRef) -> Self {
+        match value {
+            ValueRef::Null => SqlValue::Null,
+            ValueRef::Integer(i) => SqlValue::Int(i as i32),
+            ValueRef::Real(f) => SqlValue::Float(f),
+            ValueRef::Text(t) => SqlValue::Text(String::from_utf8_lossy(t).to_string()),
+            ValueRef::Blob(b) => SqlValue::Blob(b.to_vec()),
+        }
+    }
+}
+
 #[derive(Debug, serde::Serialize, specta::Type)]
 pub struct SqlQueryResult {
     pub rows: Vec<Vec<SqlValue>>,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
+pub struct SqlBatchQuery {
+    pub sql: String,
+    pub params: Vec<SqlParam>,
+    pub method: String,
+}
+
+/// AI-generated (GPT-5.3-codex).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
+pub struct SolveBatch {
+    pub solutions: Vec<HashMap<i32, TimeslotId>>,
+    pub done: bool,
+}
+
+/// AI-generated (GPT-5.3-codex).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
+pub struct SolveSessionStart {
+    pub session_id: usize,
+}
+
+pub enum SolveSessionCommand {
+    Pause,
+    Stop,
+}
+
+/// AI-generated (GPT-5.3-codex).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
+pub struct LockedTimetableSlot {
+    pub session_id: SessionId,
+    pub timeslot_id: TimeslotId,
+}
+
 /// AI-generated (GPT-5.2-codex).
 fn query_database(
-    connection: &mut rusqlite::Connection,
+    connection: &rusqlite::Connection,
     sql: &str,
     params: Vec<SqlParam>,
     method: &str,
-) -> Result<SqlQueryResult, ApiError> {
-    let sql_params = params
-        .into_iter()
-        .map(sql_param_to_rusqlite)
-        .collect::<Vec<_>>();
+) -> Result<SqlQueryResult, SqlError> {
+    let sql_params = params.into_iter().map(Value::from);
 
     let method = method.trim().to_ascii_lowercase();
 
     if method == "all" || method == "values" || method == "get" {
         let mut statement = connection
-            .prepare(sql)
-            .map_err(|err| ApiError::SqlProxyError(err.to_string()))?;
+            .prepare_cached(sql)
+            .map_err(|err| SqlError::SqlProxy(err.to_string()))?;
 
         let mut rows = statement
-            .query(rusqlite::params_from_iter(sql_params.iter()))
-            .map_err(|err| ApiError::SqlProxyError(err.to_string()))?;
+            .query(rusqlite::params_from_iter(sql_params))
+            .map_err(|err| SqlError::SqlProxy(err.to_string()))?;
 
         let mut all_rows = Vec::new();
         while let Some(row) = rows
             .next()
-            .map_err(|err| ApiError::SqlProxyError(err.to_string()))?
+            .map_err(|err| SqlError::SqlProxy(err.to_string()))?
         {
             let mut values = Vec::new();
             for column_index in 0..row.as_ref().column_count() {
                 let value = row
                     .get_ref(column_index)
-                    .map_err(|err| ApiError::SqlProxyError(err.to_string()))?;
-                values.push(rusqlite_value_to_sql_value(value));
+                    .map_err(|err| SqlError::SqlProxy(err.to_string()))?;
+                values.push(value.into());
             }
             all_rows.push(values);
         }
@@ -94,38 +170,32 @@ fn query_database(
     }
 
     connection
-        .execute(sql, rusqlite::params_from_iter(sql_params.iter()))
-        .map_err(|err| ApiError::SqlProxyError(err.to_string()))?;
+        .execute(sql, rusqlite::params_from_iter(sql_params))
+        .map_err(|err| SqlError::SqlProxy(err.to_string()))?;
 
     Ok(SqlQueryResult { rows: Vec::new() })
 }
 
 /// AI-generated (GPT-5.2-codex).
-fn sql_param_to_rusqlite(param: SqlParam) -> rusqlite::types::Value {
-    match param {
-        SqlParam::Null => rusqlite::types::Value::Null,
-        SqlParam::Bool(boolean) => rusqlite::types::Value::Integer(i64::from(boolean)),
-        SqlParam::Int(integer) => rusqlite::types::Value::Integer(i64::from(integer)),
-        SqlParam::Float(float) => rusqlite::types::Value::Real(float),
-        SqlParam::Text(text) => rusqlite::types::Value::Text(text),
+fn query_database_batch(
+    connection: &mut rusqlite::Connection,
+    queries: Vec<SqlBatchQuery>,
+) -> Result<Vec<SqlQueryResult>, SqlError> {
+    let tx = connection
+        .transaction()
+        .map_err(|err| SqlError::SqlProxy(err.to_string()))?;
+    let mut results = Vec::with_capacity(queries.len());
+    for query in queries {
+        results.push(query_database(
+            &tx,
+            &query.sql,
+            query.params,
+            &query.method,
+        )?);
     }
-}
-
-/// AI-generated (GPT-5.2-codex).
-fn rusqlite_value_to_sql_value(value: ValueRef<'_>) -> SqlValue {
-    match value {
-        ValueRef::Null => SqlValue::Null,
-        ValueRef::Integer(integer) => {
-            if let Ok(value) = i32::try_from(integer) {
-                SqlValue::Int(value)
-            } else {
-                SqlValue::Float(integer as f64)
-            }
-        }
-        ValueRef::Real(float) => SqlValue::Float(float),
-        ValueRef::Text(text) => SqlValue::Text(String::from_utf8_lossy(text).to_string()),
-        ValueRef::Blob(blob) => SqlValue::Blob(blob.to_vec()),
-    }
+    tx.commit()
+        .map_err(|err| SqlError::SqlProxy(err.to_string()))?;
+    Ok(results)
 }
 
 #[taurpc::procedures(export_to = "../src/lib/backend.ts")]
@@ -135,11 +205,42 @@ pub trait Api {
         sql: String,
         params: Vec<SqlParam>,
         method: String,
-    ) -> Result<SqlQueryResult, ApiError>;
+    ) -> Result<SqlQueryResult, SqlError>;
+
+    async fn sql_batch<R: Runtime>(
+        app_handle: AppHandle<R>,
+        queries: Vec<SqlBatchQuery>,
+    ) -> Result<Vec<SqlQueryResult>, SqlError>;
+
+    async fn start_solve_session<R: Runtime>(
+        app_handle: AppHandle<R>,
+        on_new_timetable: Channel<NewTimetableUpdate>,
+        locked_slots: Vec<LockedTimetableSlot>,
+    ) -> Result<SolveSessionStart, InitSolverError>;
+
+    async fn pause_solve_session<R: Runtime>(
+        app_handle: AppHandle<R>,
+        session_id: usize,
+    ) -> Result<(), SolveSessionControlError>;
+
+    async fn stop_solve_session<R: Runtime>(
+        app_handle: AppHandle<R>,
+        session_id: usize,
+    ) -> Result<(), SolveSessionControlError>;
 }
 
 #[derive(Clone)]
 pub struct ApiImpl;
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
+pub enum NewTimetableUpdate {
+    /// Key: session ID
+    /// Value: timeslot ID
+    ///
+    /// (Specta doesn't like non-number/string keys)
+    Timetable(HashMap<i32, TimeslotId>),
+    Done,
+}
 
 #[taurpc::resolvers]
 impl Api for ApiImpl {
@@ -149,12 +250,184 @@ impl Api for ApiImpl {
         sql: String,
         params: Vec<SqlParam>,
         method: String,
-    ) -> Result<SqlQueryResult, ApiError> {
-        let sql_proxy_db = app.state::<crate::SqlProxyConn>();
-        let mut sql_proxy_conn = sql_proxy_db
+    ) -> Result<SqlQueryResult, SqlError> {
+        let state = app.state::<crate::AppState>();
+        let sql_proxy_conn = state
+            .sql_proxy_conn
             .lock()
-            .map_err(|err| ApiError::SqlProxyError(err.to_string()))?;
+            .map_err(|err| SqlError::LockPoison(err.to_string()))?;
 
-        query_database(&mut sql_proxy_conn, &sql, params, &method)
+        query_database(&sql_proxy_conn, &sql, params, &method)
+    }
+
+    async fn sql_batch<R: Runtime>(
+        self,
+        app: AppHandle<R>,
+        queries: Vec<SqlBatchQuery>,
+    ) -> Result<Vec<SqlQueryResult>, SqlError> {
+        let state = app.state::<crate::AppState>();
+        let mut sql_proxy_conn = state
+            .sql_proxy_conn
+            .lock()
+            .map_err(|err| SqlError::LockPoison(err.to_string()))?;
+
+        query_database_batch(&mut sql_proxy_conn, queries)
+    }
+
+    async fn start_solve_session<R: Runtime>(
+        self,
+        app: AppHandle<R>,
+        on_new_timetable: Channel<NewTimetableUpdate>,
+        locked_slots: Vec<LockedTimetableSlot>,
+    ) -> Result<SolveSessionStart, InitSolverError> {
+        let (command_tx, command_rx) = mpsc::channel::<SolveSessionCommand>();
+        let (init_tx, init_rx) = mpsc::channel::<Result<(), InitSolverError>>();
+
+        let app_for_worker = app.clone();
+        thread::spawn(move || {
+            let mut paused = false;
+            let state = app_for_worker.state::<crate::AppState>();
+            let mut conn = match state.db_conn.lock() {
+                Ok(conn) => conn,
+                Err(err) => {
+                    let _ = init_tx.send(Err(InitSolverError::LockPoison(err.to_string())));
+                    return;
+                }
+            };
+
+            let fixed_slots = locked_slots
+                .iter()
+                .map(|slot| (slot.session_id, slot.timeslot_id))
+                .collect::<Vec<_>>();
+
+            let mut solutions = match backend::solve_with_locked_assignments(&mut conn, &fixed_slots) {
+                Ok(solutions) => solutions.map(|solution| {
+                    solution
+                        .into_iter()
+                        .map(|(exam_id, timeslot_id)| (exam_id.0, timeslot_id))
+                        .collect::<HashMap<i32, TimeslotId>>()
+                }),
+                Err(err) => {
+                    init_tx
+                        .send(Err(InitSolverError::Solver(err.to_string())))
+                        .expect("Failed to send solver error to main thread");
+
+                    return;
+                }
+            };
+
+            drop(conn);
+
+            init_tx
+                .send(Ok(()))
+                .expect("Failed to send initialization result to main thread");
+
+            loop {
+                if paused {
+                    match command_rx.recv() {
+                        Ok(SolveSessionCommand::Pause) => paused = false,
+                        Ok(SolveSessionCommand::Stop) | Err(_) => break,
+                    }
+                    continue;
+                }
+
+                match command_rx.try_recv() {
+                    Ok(SolveSessionCommand::Pause) => {
+                        paused = true;
+                        continue;
+                    }
+                    Ok(SolveSessionCommand::Stop) => break,
+                    Err(TryRecvError::Empty) => {}
+                    Err(TryRecvError::Disconnected) => break,
+                }
+
+                if let Some(solution) = solutions.next() {
+                    if on_new_timetable
+                        .send(NewTimetableUpdate::Timetable(solution))
+                        .is_err()
+                    {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+
+            let _ = on_new_timetable.send(NewTimetableUpdate::Done);
+        });
+
+        match init_rx.recv() {
+            Ok(Ok(())) => {
+                let state = app.state::<crate::AppState>();
+
+                let session_id = state
+                    .solve_sessions
+                    .lock()
+                    .expect("Failed to lock solve sessions")
+                    .insert(command_tx);
+
+                Ok(SolveSessionStart { session_id })
+            }
+            Ok(Err(err)) => Err(err),
+            Err(err) => Err(InitSolverError::Recv(err.to_string())),
+        }
+    }
+
+    async fn pause_solve_session<R: Runtime>(
+        self,
+        app: AppHandle<R>,
+        session_id: usize,
+    ) -> Result<(), SolveSessionControlError> {
+        let state = app.state::<crate::AppState>();
+
+        let command_tx = {
+            let sessions = state
+                .solve_sessions
+                .lock()
+                .map_err(|err| SolveSessionControlError::LockPoison(err.to_string()))?;
+
+            sessions.get(session_id).cloned()
+        };
+
+        if let Some(sender) = command_tx {
+            sender
+                .send(SolveSessionCommand::Pause)
+                .map_err(|err| SolveSessionControlError::Send(err.to_string()))?;
+        } else {
+            return Err(SolveSessionControlError::InvalidSessionId(session_id));
+        }
+
+        Ok(())
+    }
+
+    async fn stop_solve_session<R: Runtime>(
+        self,
+        app: AppHandle<R>,
+        session_id: usize,
+    ) -> Result<(), SolveSessionControlError> {
+        let app_state = app.state::<crate::AppState>();
+
+        let sender = {
+            let mut sessions = app_state
+                .solve_sessions
+                .lock()
+                .map_err(|err| SolveSessionControlError::LockPoison(err.to_string()))?;
+
+            if sessions.contains(session_id) {
+                Some(sessions.remove(session_id))
+            } else {
+                None
+            }
+        };
+
+        if let Some(sender) = sender {
+            sender
+                .send(SolveSessionCommand::Stop)
+                .map_err(|err| SolveSessionControlError::Send(err.to_string()))?;
+        } else {
+            return Err(SolveSessionControlError::InvalidSessionId(session_id));
+        }
+
+        Ok(())
     }
 }

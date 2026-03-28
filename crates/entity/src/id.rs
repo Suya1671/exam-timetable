@@ -104,6 +104,26 @@ pub struct TimeslotId(pub i32);
 )]
 pub struct StudentId(pub i32);
 
+/// Identifier for a timetable.
+/// AI-generated (GPT-5.3-codex).
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    DieselNewType,
+    derive_more::From,
+    derive_more::Into,
+    specta::Type,
+)]
+pub struct TimetableId(pub i32);
+
 /// Timeslot slot marker.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, AsExpression, FromSqlRow)]
 #[diesel(sql_type = Integer)]

@@ -3,10 +3,11 @@ use diesel::{
     NullableExpressionMethods, QueryDsl, RunQueryDsl, SqliteConnection,
 };
 use entity::{
+    exams::TimeslotRestrictionMode,
     id::{SessionId, StudentId, SubjectId, TimeslotId},
     schema::{
-        different_week_exams, enrolled_student, exam, exam_allowed_timeslot, exam_denied_timeslot,
-        same_day_exam, session, student, subject, timeslot,
+        different_week_exams, enrolled_student, exam, exam_timeslot_restriction, same_day_exam,
+        same_time_exam, session, student, subject, timeslot,
     },
 };
 use itertools::Itertools;
@@ -63,43 +64,50 @@ impl<'a> SchedulerBuilder<'a> {
         db: &mut SqliteConnection,
     ) -> Result<(), SolveError> {
         let rows = session::table
+            .inner_join(exam::table.on(exam::id.eq(session::exam_id)))
             .left_join(
-                exam_allowed_timeslot::table
-                    .on(exam_allowed_timeslot::exam_id.eq(session::exam_id)),
-            )
-            .left_join(
-                exam_denied_timeslot::table.on(exam_denied_timeslot::exam_id.eq(session::exam_id)),
+                exam_timeslot_restriction::table
+                    .on(exam_timeslot_restriction::exam_id.eq(exam::id)),
             )
             .select((
                 session::id,
-                exam_allowed_timeslot::timeslot_id.nullable(),
-                exam_denied_timeslot::timeslot_id.nullable(),
+                exam::timeslot_restriction_mode,
+                exam_timeslot_restriction::timeslot_id.nullable(),
             ))
-            .load_iter::<(SessionId, Option<TimeslotId>, Option<TimeslotId>), _>(db)?;
+            .load_iter::<(
+                SessionId,
+                Option<TimeslotRestrictionMode>,
+                Option<TimeslotId>,
+            ), _>(db)?;
 
-        let mut restrictions: HashMap<SessionId, (HashSet<TimeslotId>, HashSet<TimeslotId>)> =
-            HashMap::new();
+        let mut restrictions: HashMap<
+            (SessionId, Option<TimeslotRestrictionMode>),
+            HashSet<TimeslotId>,
+        > = HashMap::new();
 
         for row in rows {
-            let (session_id, allowed, denied) = row?;
-            let entry = restrictions.entry(session_id).or_default();
+            let (session_id, mode, timeslot_id) = row?;
+            let entry = restrictions.entry((session_id, mode)).or_default();
 
-            if let Some(a) = allowed {
-                entry.0.insert(a);
-            }
-
-            if let Some(d) = denied {
-                entry.1.insert(d);
+            if let Some(timeslot_id) = timeslot_id {
+                entry.insert(timeslot_id);
             }
         }
 
-        for (session_id, (allowed_timeslots, disallowed_timeslots)) in restrictions {
-            self.mappings.apply_timeslot_restrictions(
-                self.scheduler,
-                session_id,
-                allowed_timeslots.iter().copied(),
-                disallowed_timeslots.iter().copied(),
-            );
+        for ((session_id, mode), selected_timeslots) in restrictions {
+            match mode {
+                Some(TimeslotRestrictionMode::Allow) => self.mappings.apply_allowed_timeslots(
+                    self.scheduler,
+                    session_id,
+                    selected_timeslots.iter().copied(),
+                ),
+                Some(TimeslotRestrictionMode::Deny) => self.mappings.apply_disallowed_timeslots(
+                    self.scheduler,
+                    session_id,
+                    selected_timeslots.iter().copied(),
+                ),
+                None => {}
+            }
         }
         Ok(())
     }
@@ -229,6 +237,43 @@ impl<'a> SchedulerBuilder<'a> {
                 second_session_id,
                 week_map.clone(),
             );
+        }
+
+        Ok(())
+    }
+
+    /// Load and apply same-time constraints between exam pairs.
+    /// AI-generated (GPT-5.3-codex).
+    pub fn apply_same_time_constraints_from_db(
+        &mut self,
+        db: &mut SqliteConnection,
+    ) -> Result<(), SolveError> {
+        let (first_session, second_session) =
+            alias!(session as first_session, session as second_session);
+
+        let (first_id, first_exam_id, first_sequence) =
+            first_session.fields((session::id, session::exam_id, session::sequence));
+        let (second_id, second_exam_id, second_sequence) =
+            second_session.fields((session::id, session::exam_id, session::sequence));
+
+        let same_time_rows = same_time_exam::table
+            .inner_join(
+                first_session.on(first_exam_id
+                    .eq(same_time_exam::exam1_id)
+                    .and(first_sequence.eq(0))),
+            )
+            .inner_join(
+                second_session.on(second_exam_id
+                    .eq(same_time_exam::exam2_id)
+                    .and(second_sequence.eq(0))),
+            )
+            .select((first_id, second_id))
+            .load_iter::<(SessionId, SessionId), _>(db)?;
+
+        for row in same_time_rows {
+            let (first_session_id, second_session_id) = row?;
+            self.scheduler
+                .require_same_time(first_session_id, second_session_id);
         }
 
         Ok(())

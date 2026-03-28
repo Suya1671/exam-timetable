@@ -29,6 +29,7 @@ use z3::{
     derive_more::Display,
     derive_more::From,
     derive_more::Into,
+    specta::Type,
 )]
 pub struct TimeslotIndex(pub u64);
 
@@ -200,6 +201,19 @@ impl ExamScheduler {
                 session2,
                 allowed_pairs: allowed_timeslot_pairs,
             },
+        );
+    }
+
+    /// Require two sessions to run in the same timeslot.
+    /// AI-generated (GPT-5.3-codex).
+    pub fn require_same_time(&mut self, session1: SessionId, session2: SessionId) {
+        let timeslot1 = self.assignment.get(&session1).unwrap();
+        let timeslot2 = self.assignment.get(&session2).unwrap();
+
+        self.tracker.assert_hard(
+            &self.optimizer,
+            &timeslot1.eq(timeslot2),
+            ConstraintError::SameTime { session1, session2 },
         );
     }
 
@@ -674,6 +688,26 @@ mod tests {
         assert_ne!(day_map.get(&t1), day_map.get(&t2));
     }
 
+    /// AI-generated (GPT-5.3-codex).
+    #[test]
+    fn require_same_time_assigns_both_sessions_to_same_slot() {
+        let exam_ids = [SessionId(1), SessionId(2)];
+        let mut scheduler = ExamScheduler::new(exam_ids.iter().copied(), 3);
+
+        scheduler.require_same_time(SessionId(1), SessionId(2));
+
+        let solution = scheduler
+            .solve()
+            .expect("Expected a valid solution")
+            .next()
+            .expect("solution to exist");
+
+        assert_eq!(
+            solved_timeslot(&solution, SessionId(1)),
+            solved_timeslot(&solution, SessionId(2))
+        );
+    }
+
     #[test]
     fn setup_students_prevents_clashes() {
         let exam_ids = [SessionId(1), SessionId(2), SessionId(3)];
@@ -959,7 +993,7 @@ mod tests {
 //     Inoptimal(HashMap<ExamId, TimeslotId>),
 // }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, serde::Serialize, specta::Type)]
 pub enum SolverError {
     /// The query is unsatisfiable. No schedule that satisfies all hard constraints exists.
     #[error("The query is unsatisfiable. No schedule that satisfies all hard constraints exists")]

@@ -7,8 +7,12 @@ license.workspace = true
 [dependencies]
 entity = { version = "0.1.0", path = "../entity" }
 solver = { version = "0.1.0", path = "../solver" }
-hack = { version = "0.1.0", path = "../hack" }
 diesel = { version = "2.3.7", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "time"] }
 thiserror = "2.0.18"
 time = "0.3.47"
 itertools = "0.14.0"
+serde = { version = "1.0.228", features = ["derive"] }
+specta = { version = "=2.0.0-rc.22", features = ["derive"] }
+
+[package.metadata.cargo-machete]
+ignored = ["hack"]

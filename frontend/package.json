@@ -1,53 +1,72 @@
 {
-    "name": "app",
-    "version": "0.1.0",
-    "description": "",
-    "type": "module",
-    "scripts": {
-        "dev": "vite dev",
-        "build": "vite build",
-        "preview": "vite preview",
-        "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --incremental --tsgo",
-        "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch --incremental --tsgo",
-        "db:pull": "drizzle-kit pull --config drizzle.config.ts",
-        "tauri": "tauri"
-    },
-    "license": "MIT",
-    "dependencies": {
-        "@ktibow/iconset-material-symbols": "^0.0.1764827375",
-        "@svar-ui/svelte-grid": "^2.6.0",
-        "@tanstack/store": "^0.9.3",
-        "@tanstack/svelte-form": "^1.28.5",
-        "@tauri-apps/api": "^2.10.1",
-        "@tauri-apps/plugin-opener": "^2.5.3",
-        "drizzle-orm": "1.0.0-beta.19",
-        "melt": "^0.44.0",
-        "taurpc": "^1.8.1",
-        "valibot": "^1.3.1"
-    },
-    "devDependencies": {
-        "@fontsource-variable/google-sans-flex": "^5.2.1",
-        "@iconify/types": "^2.0.0",
-        "@sveltejs/adapter-static": "^3.0.10",
-        "@sveltejs/kit": "^2.55.0",
-        "@sveltejs/vite-plugin-svelte": "^7.0.0",
-        "@tauri-apps/cli": "^2.10.1",
-        "@typescript/native-preview": "7.0.0-dev.20260323.1",
-        "better-sqlite3": "^12.8.0",
-        "drizzle-kit": "1.0.0-beta.19",
-        "m3-svelte": "^7.1.2",
-        "svelte": "^5.55.0",
-        "svelte-check": "^4.4.5",
-        "typescript": "~5.9.3",
-        "vite": "^8.0.2",
-        "vite-plugin-devtools-json": "^1.0.0",
-        "vite-plugin-functions-mixins": "^0.4.1",
-        "vite-plugin-token-shaker": "^0.0.7"
-    },
-    "packageManager": "pnpm@10.32.1+sha512.a706938f0e89ac1456b6563eab4edf1d1faf3368d1191fc5c59790e96dc918e4456ab2e67d613de1043d2e8c81f87303e6b40d4ffeca9df15ef1ad567348f2be",
-    "pnpm": {
-        "onlyBuiltDependencies": [
-            "esbuild"
-        ]
-    }
+	"name": "app",
+	"version": "0.1.0",
+	"description": "",
+	"license": "MIT",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --incremental --tsgo",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch --incremental --tsgo",
+		"db:pull": "drizzle-kit pull --config drizzle.config.ts",
+		"tauri": "tauri",
+		"lint": "prettier --check . && eslint .",
+		"format": "prettier --write ."
+	},
+	"dependencies": {
+		"@js-temporal/polyfill": "^0.5.1",
+		"@ktibow/iconset-material-symbols": "^0.0.1764827375",
+		"@oddbird/css-anchor-positioning": "^0.9.0",
+		"@svar-ui/svelte-grid": "^2.6.1",
+		"@tanstack/store": "^0.9.3",
+		"@tanstack/svelte-form": "^1.28.6",
+		"@tauri-apps/api": "^2.10.1",
+		"@tauri-apps/plugin-opener": "^2.5.3",
+		"@thisux/sveltednd": "^0.2.3",
+		"drizzle-orm": "1.0.0-beta.19",
+		"eslint-plugin-drizzle": "^0.2.3",
+		"melt": "^0.44.0",
+		"taurpc": "^1.8.1",
+		"valibot": "^1.3.1"
+	},
+	"devDependencies": {
+		"@eslint/compat": "^2.0.3",
+		"@eslint/js": "^10.0.1",
+		"@fontsource-variable/google-sans-flex": "^5.2.1",
+		"@iconify/types": "^2.0.0",
+		"@sveltejs/adapter-static": "^3.0.10",
+		"@sveltejs/kit": "^2.55.0",
+		"@sveltejs/vite-plugin-svelte": "^7.0.0",
+		"@tauri-apps/cli": "^2.10.1",
+		"@types/node": "^25.5.2",
+		"@typescript/native-preview": "7.0.0-dev.20260403.1",
+		"@vitejs/devtools": "^0.1.13",
+		"better-sqlite3": "^12.8.0",
+		"drizzle-kit": "1.0.0-beta.19",
+		"eslint": "^10.0.3",
+		"eslint-config-prettier": "^10.1.8",
+		"eslint-plugin-svelte": "^3.17.0",
+		"globals": "^17.4.0",
+		"lightningcss": "^1.32.0",
+		"m3-svelte": "^7.1.2",
+		"prettier": "^3.8.1",
+		"prettier-plugin-svelte": "^3.4.1",
+		"svelte": "^5.55.1",
+		"svelte-check": "^4.4.6",
+		"typescript": "~6.0.2",
+		"typescript-eslint": "^8.57.0",
+		"vite": "^8.0.3",
+		"vite-plugin-devtools-json": "^1.0.0",
+		"vite-plugin-functions-mixins": "^0.4.1",
+		"vite-plugin-token-shaker": "^0.0.7"
+	},
+	"packageManager": "pnpm@10.33.0+sha512.10568bb4a6afb58c9eb3630da90cc9516417abebd3fabbe6739f0ae795728da1491e9db5a544c76ad8eb7570f5c4bb3d6c637b2cb41bfdcdb47fa823c8649319",
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"better-sqlite3",
+			"esbuild"
+		]
+	}
 }

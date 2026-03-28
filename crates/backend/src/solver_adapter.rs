@@ -136,23 +136,29 @@ impl SolverAdapter {
             .collect()
     }
 
-    /// Apply allowed/disallowed timeslots for a session.
-    /// AI-generated (GPT-5.2-codex).
-    pub fn apply_timeslot_restrictions(
+    /// Apply allowed timeslots for a session.
+    pub fn apply_allowed_timeslots(
         &self,
         scheduler: &mut ExamScheduler,
         session_id: SessionId,
         allowed_timeslots: impl Iterator<Item = TimeslotId>,
+    ) {
+        let allowed_indices = self.map_timeslots_to_indices(allowed_timeslots);
+        if !allowed_indices.is_empty() {
+            scheduler.add_allowed_timeslots(session_id, allowed_indices);
+        }
+    }
+
+    /// Apply disallowed timeslots for a session.
+    pub fn apply_disallowed_timeslots(
+        &self,
+        scheduler: &mut ExamScheduler,
+        session_id: SessionId,
         disallowed_timeslots: impl Iterator<Item = TimeslotId>,
     ) {
-        let timeslot_indices = self.map_timeslots_to_indices(allowed_timeslots);
-        if !timeslot_indices.is_empty() {
-            scheduler.add_allowed_timeslots(session_id, timeslot_indices);
-        }
-
-        let timeslot_indices = self.map_timeslots_to_indices(disallowed_timeslots);
-        if !timeslot_indices.is_empty() {
-            scheduler.add_disallowed_timeslots(session_id, timeslot_indices);
+        let disallowed_indices = self.map_timeslots_to_indices(disallowed_timeslots);
+        if !disallowed_indices.is_empty() {
+            scheduler.add_disallowed_timeslots(session_id, disallowed_indices);
         }
     }
 

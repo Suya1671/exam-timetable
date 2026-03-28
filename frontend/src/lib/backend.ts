@@ -4,73 +4,96 @@ import { createTauRPCProxy as createProxy, type InferCommandOutput } from 'taurp
 type TAURI_CHANNEL<T> = (response: T) => void
 
 
-export type ApiError = 
 /**
- * AI-generated (GPT-5.2-codex).
+ * AI-generated (GPT-5.3-codex).
  */
-{ SqlProxyError: string }
+export type InitSolverError = 
+/**
+ * AI-generated (GPT-5.3-codex).
+ */
+{ LockPoison: string } | 
+/**
+ * AI-generated (GPT-5.3-codex).
+ */
+{ Solver: string } | 
+/**
+ * AI-generated (GPT-5.3-codex).
+ */
+{ Recv: string }
 
 /**
- * AI-generated (GPT-5.2-codex).
+ * AI-generated (GPT-5.3-codex).
  */
-export type SqlParam = 
+export type LockedTimetableSlot = { session_id: SessionId; timeslot_id: TimeslotId }
+
+export type NewTimetableUpdate = 
 /**
- * AI-generated (GPT-5.2-codex).
+ * Key: session ID
+ * Value: timeslot ID
+ * 
+ * (Specta doesn't like non-number/string keys)
  */
-"Null" | 
-/**
- * AI-generated (GPT-5.2-codex).
- */
-{ Bool: boolean } | 
-/**
- * AI-generated (GPT-5.2-codex).
- */
-{ Int: number } | 
-/**
- * AI-generated (GPT-5.2-codex).
- */
-{ Float: number } | 
-/**
- * AI-generated (GPT-5.2-codex).
- */
-{ Text: string }
+{ Timetable: Partial<{ [key in number]: TimeslotId }> } | "Done"
 
 /**
- * AI-generated (GPT-5.2-codex).
+ * Identifier for a session.
  */
+export type SessionId = number
+
+/**
+ * AI-generated (GPT-5.3-codex).
+ */
+export type SolveSessionControlError = 
+/**
+ * AI-generated (GPT-5.3-codex).
+ */
+{ LockPoison: string } | 
+/**
+ * AI-generated (GPT-5.3-codex).
+ */
+{ Send: string } | 
+/**
+ * AI-generated (GPT-5.3-codex).
+ */
+{ InvalidSessionId: number }
+
+/**
+ * AI-generated (GPT-5.3-codex).
+ */
+export type SolveSessionStart = { session_id: number }
+
+export type SqlBatchQuery = { sql: string; params: SqlParam[]; method: string }
+
+/**
+ * AI-generated (GPT-5.3-codex).
+ */
+export type SqlError = 
+/**
+ * AI-generated (GPT-5.3-codex).
+ */
+{ SqlProxy: string } | 
+/**
+ * AI-generated (GPT-5.3-codex).
+ */
+{ LockPoison: string }
+
+export type SqlParam = "Null" | { Bool: boolean } | { Int: number } | { Float: number } | { Text: string }
+
 export type SqlQueryResult = { rows: SqlValue[][] }
 
-/**
- * AI-generated (GPT-5.2-codex).
- */
-export type SqlValue = 
-/**
- * AI-generated (GPT-5.2-codex).
- */
-"Null" | 
-/**
- * AI-generated (GPT-5.2-codex).
- */
-{ Bool: boolean } | 
-/**
- * AI-generated (GPT-5.2-codex).
- */
-{ Int: number } | 
-/**
- * AI-generated (GPT-5.2-codex).
- */
-{ Float: number } | 
-/**
- * AI-generated (GPT-5.2-codex).
- */
-{ Text: string } | 
-/**
- * AI-generated (GPT-5.2-codex).
- */
-{ Blob: number[] }
+export type SqlValue = "Null" | { Bool: boolean } | { Int: number } | { Float: number } | { Text: string } | { Blob: number[] }
 
-const ARGS_MAP = { '':'{"sql":["sql","params","method"]}' }
-export type Router = { "": {sql: (sql: string, params: SqlParam[], method: string) => Promise<SqlQueryResult>} };
+/**
+ * Identifier for a timeslot.
+ */
+export type TimeslotId = number
+
+const ARGS_MAP = { '':'{"pause_solve_session":["session_id"],"sql":["sql","params","method"],"sql_batch":["queries"],"start_solve_session":["on_new_timetable","locked_slots"],"stop_solve_session":["session_id"]}' }
+export type Router = { "": {pause_solve_session: (sessionId: number) => Promise<null>, 
+sql: (sql: string, params: SqlParam[], method: string) => Promise<SqlQueryResult>, 
+sql_batch: (queries: SqlBatchQuery[]) => Promise<SqlQueryResult[]>, 
+start_solve_session: (onNewTimetable: TAURI_CHANNEL<NewTimetableUpdate>, lockedSlots: LockedTimetableSlot[]) => Promise<SolveSessionStart>, 
+stop_solve_session: (sessionId: number) => Promise<null>} };
 
 
 export const createTauRPCProxy = () => createProxy<Router>(ARGS_MAP)

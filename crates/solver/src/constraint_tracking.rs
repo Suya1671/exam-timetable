@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use z3::{ast::Bool, Optimize};
 
-use crate::diagnostics::{ConstraintError};
+use crate::diagnostics::ConstraintError;
 
 /// Tracks hard constraints asserted into Z3 and maps them back to typed
 /// scheduler constraints for diagnostics.
@@ -83,12 +83,11 @@ mod tests {
         assert_eq!(optimizer.check(&[]), SatResult::Unsat);
 
         let mut unsat_core_constraints = tracker.unsat_core_constraints(&optimizer);
-        
-        assert!(
-            unsat_core_constraints.any(|err| err == &ConstraintError::DomainLowerBound {
+
+        assert!(unsat_core_constraints.any(|err| err
+            == &ConstraintError::DomainLowerBound {
                 session: entity::id::SessionId(1)
-            })
-        );
+            }));
     }
 
     #[test]

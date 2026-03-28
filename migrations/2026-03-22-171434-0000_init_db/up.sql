@@ -54,7 +54,6 @@ CREATE TABLE exam_allowed_timeslot (
 CREATE TABLE same_day_exam (
   first_slot_exam_id INTEGER NOT NULL,
   second_slot_exam_id INTEGER NOT NULL,
-  date TEXT NOT NULL,
   PRIMARY KEY (first_slot_exam_id, second_slot_exam_id),
   FOREIGN KEY (first_slot_exam_id) REFERENCES exam (id) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (second_slot_exam_id) REFERENCES exam (id) ON DELETE CASCADE ON UPDATE CASCADE
