@@ -52,6 +52,7 @@ jobs:
             libsqlite3-dev \
             pkg-config \
             cmake \
+            mold \
             clang
 
       - name: Setup pnpm
@@ -71,7 +72,7 @@ jobs:
         uses: swatinem/rust-cache@v2
 
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v0.6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
