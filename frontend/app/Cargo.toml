@@ -4,36 +4,42 @@ version = "0.1.0"
 description = "Exam-scheduler app"
 authors = ["Suya Singh <suya@wobbl.in>"]
 edition = "2024"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[package.metadata.cargo-machete]
+ignored = ["hack"]
+
 [lib]
+crate-type = ["cdylib", "rlib", "staticlib"]
 # The `_lib` suffix may seem redundant but it is necessary
 # to make the lib name unique and wouldn't conflict with the bin name.
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
 name = "app_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
+
+[dependencies]
+backend = { path = "../../crates/backend", version = "0.1.0" }
+diesel = { version = "2.3.7", features = [
+  "returning_clauses_for_sqlite_3_35",
+  "sqlite",
+  "time",
+] }
+diesel_migrations = { version = "2.3.1", features = ["sqlite"] }
+entity = { path = "../../crates/entity", version = "0.1.0" }
+hack = { path = "../../crates/hack", version = "0.1" }
+rusqlite = { version = "0.32.1", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+slab = "0.4.12"
+specta = { version = "=2.0.0-rc.22", features = ["derive"] }
+specta-typescript = "0.0.9"
+tauri = { version = "2", features = [] }
+tauri-plugin-fs = "2"
+tauri-plugin-opener = "2"
+taurpc = "0.7.1"
+thiserror = "2.0.18"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tracing = { version = "0.1.44", features = ["async-await"] }
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
-
-[dependencies]
-tauri = { version = "2", features = [] }
-tauri-plugin-opener = "2"
-serde = { version = "1", features = ["derive"] }
-diesel = { version = "2.3.7", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "time"] }
-tracing = { version = "0.1.44", features = ["async-await"] }
-tauri-plugin-fs = "2"
-rusqlite = { version = "0.32.1", features = ["bundled"] }
-diesel_migrations = { version = "2.3.1", features = ["sqlite"] }
-taurpc = "0.7.1"
-specta = { version = "=2.0.0-rc.22", features = ["derive"] }
-specta-typescript = "0.0.9"
-thiserror = "2.0.18"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-entity = { version = "0.1.0", path = "../../crates/entity" }
-backend = { version = "0.1.0", path = "../../crates/backend" }
-slab = "0.4.12"
-
-[package.metadata.cargo-machete]
-ignored = ["hack"]

@@ -300,21 +300,22 @@ impl Api for ApiImpl {
                 .map(|slot| (slot.session_id, slot.timeslot_id))
                 .collect::<Vec<_>>();
 
-            let mut solutions = match backend::solve_with_locked_assignments(&mut conn, &fixed_slots) {
-                Ok(solutions) => solutions.map(|solution| {
-                    solution
-                        .into_iter()
-                        .map(|(exam_id, timeslot_id)| (exam_id.0, timeslot_id))
-                        .collect::<HashMap<i32, TimeslotId>>()
-                }),
-                Err(err) => {
-                    init_tx
-                        .send(Err(InitSolverError::Solver(err.to_string())))
-                        .expect("Failed to send solver error to main thread");
+            let mut solutions =
+                match backend::solve_with_locked_assignments(&mut conn, &fixed_slots) {
+                    Ok(solutions) => solutions.map(|solution| {
+                        solution
+                            .into_iter()
+                            .map(|(exam_id, timeslot_id)| (exam_id.0, timeslot_id))
+                            .collect::<HashMap<i32, TimeslotId>>()
+                    }),
+                    Err(err) => {
+                        init_tx
+                            .send(Err(InitSolverError::Solver(err.to_string())))
+                            .expect("Failed to send solver error to main thread");
 
-                    return;
-                }
-            };
+                        return;
+                    }
+                };
 
             drop(conn);
 

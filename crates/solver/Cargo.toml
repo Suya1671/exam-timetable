@@ -5,13 +5,14 @@ edition.workspace = true
 license.workspace = true
 publish = false
 
-[dependencies]
-entity = { path = "../entity" }
-z3 = { version = "0.19.15", features = ["gh-release"] }
-thiserror = "2.0.18"
-serde = { version = "1.0", features = ["derive"] }
-derive_more = { version = "2.1.1", features = ["display", "from", "into"] }
-specta = { version = "=2.0.0-rc.22", features = ["derive"] }
-
 [package.metadata.cargo-machete]
 ignored = ["hack"]
+
+[dependencies]
+derive_more = { version = "2.1.1", features = ["display", "from", "into"] }
+entity = { path = "../entity" }
+hack = { path = "../hack", version = "0.1" }
+serde = { version = "1.0", features = ["derive"] }
+specta = { version = "=2.0.0-rc.22", features = ["derive"] }
+thiserror = "2.0.18"
+z3 = { version = "0.20.0", features = ["vendored"] }

@@ -46,27 +46,40 @@
           }
         );
 
-        src = craneLib.cleanCargoSource ./.;
+        src = lib.fileset.toSource {
+          root = ./.;
+          fileset = lib.fileset.unions [
+            (lib.fileset.fromSource (craneLib.cleanCargoSource ./.) )
+            ./frontend/app/tauri.conf.json
+            ./frontend/app/capabilities
+            ./frontend/app/build.rs
+            ./frontend/app/icons
+            ./migrations
+          ];
+        };
 
-        # Common arguments can be set here to avoid repeating them later
         commonArgs = {
           inherit src;
           strictDeps = true;
           stdenv = p: p.clangStdenv;
 
           buildInputs = [
-            # Add additional build inputs here
             pkgs.z3
+            pkgs.pkg-config
+            pkgs.glib
+            pkgs.gtk3
+            pkgs.librsvg
+            pkgs.webkitgtk_4_1
           ]
           ++ lib.optionals pkgs.stdenv.isDarwin [
-            # Additional darwin specific inputs can be set here
             pkgs.libiconv
           ];
 
           nativeBuildInputs = [
             pkgs.mold
-            pkgs.clang
-            pkgs.cargo-llvm-cov
+            pkgs.pkg-config
+            pkgs.cmake
+            pkgs.python314
           ];
 
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
@@ -100,7 +113,13 @@
               (craneLib.fileset.commonCargoSources ./crates/hack)
               (craneLib.fileset.commonCargoSources ./crates/solver)
               (craneLib.fileset.commonCargoSources ./crates/backend)
-              (craneLib.fileset.commonCargoSources crate)
+              (craneLib.fileset.commonCargoSources ./crates/entity)
+              (craneLib.fileset.commonCargoSources ./frontend/app)
+              ./frontend/app/tauri.conf.json
+              ./frontend/app/capabilities
+              ./frontend/app/build.rs
+              ./frontend/app/gen
+              crate
             ];
           };
 
@@ -163,10 +182,23 @@
             inherit src;
           };
 
-          exam-timetable-toml-fmt = craneLib.taploFmt {
+          exam-timetable-toml-fmt = pkgs.stdenv.mkDerivation {
+            pname = "exam-timetable-toml-fmt";
+            version = "1.0";
+
             src = pkgs.lib.sources.sourceFilesBySuffices src [ ".toml" ];
-            # taplo arguments can be further customized below as needed
-            # taploExtraArgs = "--config ./taplo.toml";
+
+            nativeBuildInputs = [ pkgs.tombi ];
+
+            checkPhase = ''
+              tombi check
+            '';
+
+            # Create dummy output so nix is happy
+            installPhase = ''
+              mkdir -p $out
+              touch $out/.tombi-check-done
+            '';
           };
 
           # Audit dependencies
@@ -189,51 +221,9 @@
               partitions = 1;
               partitionType = "count";
               cargoNextestPartitionsExtraArgs = "--no-tests=pass";
+              withLlvmCov = true;
             }
           );
-
-          # Generate LLVM coverage summary for the workspace
-          exam-timetable-coverage = craneLib.mkCargoDerivation {
-            inherit src;
-            pname = "exam-timetable-coverage";
-            cargoArtifacts = null;
-            doInstallCargoArtifacts = false;
-
-            nativeBuildInputs = [
-              pkgs.cargo-llvm-cov
-              pkgs.rust-bin.stable.latest.default
-              pkgs.clang
-              pkgs.mold
-            ];
-
-            buildPhaseCargoCommand = ''
-              mkdir -p $out
-              cargo llvm-cov nextest --workspace --all-features --summary-only > $out/summary.txt
-              cargo llvm-cov nextest --workspace --all-features --lcov --output-path $out/lcov.info
-              cargo llvm-cov nextest --workspace --all-features --cobertura --output-path $out/cobertura.xml
-            '';
-          };
-
-          # Generate browsable HTML coverage report
-          exam-timetable-coverage-html = craneLib.mkCargoDerivation {
-            inherit src;
-            pname = "exam-timetable-coverage-html";
-            cargoArtifacts = null;
-            doInstallCargoArtifacts = false;
-
-            nativeBuildInputs = [
-              pkgs.cargo-llvm-cov
-              pkgs.rust-bin.stable.latest.default
-              pkgs.clang
-              pkgs.mold
-            ];
-
-            buildPhaseCargoCommand = ''
-              cargo llvm-cov nextest --workspace --all-features --html --output-dir html
-              mkdir -p $out
-              cp -r html/* $out/
-            '';
-          };
 
           # Ensure that cargo-hakari is up to date
           exam-timetable-hakari = craneLib.mkCargoDerivation {
@@ -256,8 +246,7 @@
 
         packages = {
           # inherit my-server;
-          coverage = self.checks.${system}.exam-timetable-coverage;
-          coverage-html = self.checks.${system}.exam-timetable-coverage-html;
+          coverage = self.checks.${system}.exam-timetable-nextest;
         };
 
         apps = {
@@ -278,25 +267,31 @@
 
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
           buildInputs = with pkgs; [
-            librsvg
-            webkitgtk_4_1
           ];
 
           shellHook = ''
-            export XDG_DATA_DIRS="$GSETTINGS_SCHEMAS_PATH" # Needed on Wayland to report the correct display scale
+            export XDG_DATA_DIRS="$GSETTINGS_SCHEMAS_PATH"
+            export LD_LIBRARY_PATH="${pkgs.webkitgtk_4_1}/lib:$LD_LIBRARY_PATH"
           '';
 
-          packages = [
-            pkgs.cargo-hakari
-            pkgs.cargo-llvm-cov
-            pkgs.cargo-tauri
-            pkgs.nodejs
-            pkgs.pnpm
-            pkgs.diesel-cli
-            pkgs.clang
-            pkgs.mold
-            pkgs.pkg-config
-            pkgs.wrapGAppsHook4
+          packages = with pkgs; [
+            cargo-hakari
+            cargo-llvm-cov
+            cargo-tauri
+            tombi
+            nodejs
+            pnpm
+            diesel-cli
+            clang
+            mold
+            pkg-config
+            wrapGAppsHook4
+            python3
+            dbus
+            glib
+            gtk3
+            librsvg
+            webkitgtk_4_1
           ];
         };
       }

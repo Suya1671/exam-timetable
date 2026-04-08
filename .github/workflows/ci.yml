@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  nix-check:
+    name: Nix Flake Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Nix
+        uses: canidae-solutions/lix-quick-install-action@v4
+
+      - name: Setup nix-community cache
+      - uses: cachix/cachix-action@v16
+        with:
+          name: nix-community
+
+      - name: Cache Nix inputs
+        uses: cachix/cachix-action@v14
+        with:
+          name: exam-timetable
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      - name: Run flake check
+        run: nix flake check --allow-import-from-derivation
+
+      - name: Build coverage
+        run: nix build .#coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: result/coverage
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  frontend-check:
+    name: Frontend Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        cache: true
+        cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Run Svelte check
+        working-directory: frontend
+        run: pnpm check
+
+  frontend-lint:
+    name: Frontend Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        cache: true
+        cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Run lint
+        working-directory: frontend
+        run: pnpm lint

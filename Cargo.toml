@@ -11,12 +11,12 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 
-[workspace.metadata.crane]
-name = "exam-timetable"
+[workspace.lints.clippy]
+pedantic = "warn"
+restriction = "warn"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
 
-[workspace.lints.clippy]
-pedantic = "warn"
-restriction = "warn"
+[workspace.metadata.crane]
+name = "exam-timetable"
