@@ -56,8 +56,9 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        cache: true
-        cache-dependency-path: frontend/pnpm-lock.yaml
+        with:
+          cache: true
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
