@@ -77,12 +77,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: ${{ matrix.args }}
-          uploadWorkflowArtifacts: true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
           name: exam-scheduler-${{ matrix.platform }}
           path: |
-            frontend/app/target/release/bundle/**
+            target/release/bundle/**
           retention-days: 5
