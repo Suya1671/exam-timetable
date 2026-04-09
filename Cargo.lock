@@ -1736,8 +1736,6 @@ dependencies = [
  "windows-sys 0.61.2",
  "winnow 0.7.15",
  "winnow 1.0.1",
- "z3",
- "z3-sys",
 ]
 
 [[package]]
@@ -6208,6 +6206,7 @@ dependencies = [
  "pkg-config",
  "reqwest 0.12.28",
  "serde_json",
+ "vcpkg",
  "z3-src",
  "zip",
 ]

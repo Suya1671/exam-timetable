@@ -46,5 +46,6 @@ tauri-build = { version = "2", features = [] }
 
 [features]
 default = []
+vcpkg = ["backend/vcpkg"]
 gh-release = ["backend/gh-release"]
 vendored = ["backend/vendored"]

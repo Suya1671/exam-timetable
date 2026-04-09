@@ -15,9 +15,10 @@ hack = { path = "../hack", version = "0.1" }
 serde = { version = "1.0", features = ["derive"] }
 specta = { version = "=2.0.0-rc.22", features = ["derive"] }
 thiserror = "2.0.18"
-z3 = { version = "0.20.0" }
+z3 = { version = "0.20.0", default-features = false }
 
 [features]
 default = []
+vcpkg = ["z3/vcpkg"]
 gh-release = ["z3/gh-release"]
 vendored = ["z3/vendored"]
