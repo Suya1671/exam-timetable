@@ -25,11 +25,16 @@ type ExamRestrictionMap = HashMap<ExamId, (Option<TimeslotRestrictionMode>, Hash
 struct ExamDetails {
     name: String,
     grade: i32,
+    paper: i32,
 }
 
 impl std::fmt::Display for ExamDetails {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} (Grade {})", self.name, self.grade)
+        write!(
+            f,
+            "{} Paper {} (Grade {})",
+            self.name, self.paper, self.grade
+        )
     }
 }
 
@@ -128,6 +133,7 @@ fn run_feasibility_precheck(db: &mut SqliteConnection, n_timeslots: u64) -> Resu
     }
 
     precheck_enrolled_subjects_have_sessions(db)?;
+    precheck_students_have_exams_at_their_grade(db)?;
 
     let ctx = PrecheckContext::load(db, n_timeslots)?;
 
@@ -387,6 +393,39 @@ fn precheck_enrolled_subjects_have_sessions(db: &mut SqliteConnection) -> Result
 }
 
 /// AI-generated (GPT-5.3-codex).
+fn precheck_students_have_exams_at_their_grade(
+    db: &mut SqliteConnection,
+) -> Result<(), SolveError> {
+    let invalid_enrollments = student::table
+        .inner_join(enrolled_student::table)
+        .select((student::name, student::grade, enrolled_student::subject_id))
+        .filter(not(exists(
+            exam::table
+                .filter(exam::subject_id.eq(enrolled_student::subject_id))
+                .filter(exam::grade.eq(student::grade)),
+        )))
+        .load::<(String, i32, SubjectId)>(db)?;
+
+    if let Some((student_name, grade, subject_id)) = invalid_enrollments.into_iter().next() {
+        let subject_name: String = subject::table
+            .filter(subject::id.eq(subject_id))
+            .select(subject::name)
+            .first(db)
+            .unwrap_or_else(|_| format!("ID {}", subject_id.0));
+
+        return Err(SolveError::PrecheckFailed {
+            reason: format!(
+                "Student '{}' (Grade {}) is enrolled in '{}' but no exam exists at their grade. \
+Add exams for Grade {} or remove the subject from this student's enrolments.",
+                student_name, grade, subject_name, grade
+            ),
+        });
+    }
+
+    Ok(())
+}
+
+/// AI-generated (GPT-5.3-codex).
 fn load_all_timeslot_ids(db: &mut SqliteConnection) -> Result<HashSet<TimeslotId>, SolveError> {
     let ids = timeslot::table
         .select(timeslot::id)
@@ -427,12 +466,12 @@ fn load_exam_details(
 ) -> Result<HashMap<ExamId, ExamDetails>, SolveError> {
     let rows = exam::table
         .inner_join(subject::table.on(exam::subject_id.eq(subject::id)))
-        .select((exam::id, subject::name, exam::grade, exam::subject_id))
-        .load::<(ExamId, String, i32, SubjectId)>(db)?;
+        .select((exam::id, subject::name, exam::grade, exam::paper))
+        .load::<(ExamId, String, i32, i32)>(db)?;
 
     Ok(rows
         .into_iter()
-        .map(|(id, name, grade, _)| (id, ExamDetails { name, grade }))
+        .map(|(id, name, grade, paper)| (id, ExamDetails { name, grade, paper }))
         .collect())
 }
 
