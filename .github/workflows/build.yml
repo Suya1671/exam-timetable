@@ -17,23 +17,25 @@ jobs:
       matrix:
         include:
           - platform: ubuntu-latest
-            args: ''
+            targets: ''
           - platform: macos-latest
-            args: '--target aarch64-apple-darwin'
+            targets: 'aarch64-apple-darwin'
           - platform: macos-latest
-            args: '--target x86_64-apple-darwin'
+            targets: 'x86_64-apple-darwin'
           - platform: windows-latest
-            args: ''
-
+            targets: ''
     runs-on: ${{ matrix.platform }}
-
+    env:
+      # z3-src uses std::format / std::to_chars for floats, which requires
+      # macOS 13.3+. Without this, cmake injects -mmacosx-version-min=10.13
+      # and the SDK marks those symbols unavailable, breaking the build.
+      MACOSX_DEPLOYMENT_TARGET: '13.3'
     steps:
       - uses: actions/checkout@v6
 
       - name: Install macOS dependencies
         if: matrix.platform == 'macos-latest'
-        run: |
-          xcode-select --install || true
+        run: xcode-select --install || true
 
       - name: Install Ubuntu dependencies
         if: matrix.platform == 'ubuntu-latest'
@@ -72,16 +74,15 @@ jobs:
         uses: swatinem/rust-cache@v2
 
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0.6
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          args: ${{ matrix.args }}
+          targets: ${{ matrix.targets }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: exam-scheduler-${{ matrix.platform }}
-          path: |
-            target/release/bundle/**
+          name: exam-scheduler-${{ matrix.platform }}-${{ matrix.targets || 'default' }}
+          path: target/release/bundle/**
           retention-days: 5
