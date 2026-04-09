@@ -20,6 +20,80 @@ use crate::solver_adapter::SolverAdapter;
 /// AI-generated (GPT-5.3-codex).
 type ExamRestrictionMap = HashMap<ExamId, (Option<TimeslotRestrictionMode>, HashSet<TimeslotId>)>;
 
+#[derive(Debug, Clone)]
+struct ExamDetails {
+    name: String,
+    grade: i32,
+}
+
+impl std::fmt::Display for ExamDetails {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} (Grade {})", self.name, self.grade)
+    }
+}
+
+/// AI-generated (GPT-5.3-codex).
+struct PrecheckContext {
+    all_timeslots: HashSet<TimeslotId>,
+    restrictions: ExamRestrictionMap,
+    exam_details: HashMap<ExamId, ExamDetails>,
+    morning_slots_by_date: HashMap<time::Date, HashSet<TimeslotId>>,
+    all_slots_by_date: HashMap<time::Date, HashSet<TimeslotId>>,
+}
+
+impl PrecheckContext {
+    fn load(db: &mut SqliteConnection, _n_timeslots: u64) -> Result<Self, SolveError> {
+        let all_timeslots = load_all_timeslot_ids(db)?;
+        let restrictions = load_exam_restrictions(db)?;
+        let exam_details = load_exam_details(db)?;
+
+        let timeslot_rows = timeslot::table
+            .select((timeslot::id, timeslot::date, timeslot::slot))
+            .load::<(TimeslotId, time::Date, i32)>(db)?;
+
+        let mut morning_slots_by_date: HashMap<time::Date, HashSet<TimeslotId>> = HashMap::new();
+        let mut all_slots_by_date: HashMap<time::Date, HashSet<TimeslotId>> = HashMap::new();
+        for (id, date, slot) in timeslot_rows {
+            all_slots_by_date.entry(date).or_default().insert(id);
+            if slot == 0 {
+                morning_slots_by_date.entry(date).or_default().insert(id);
+            }
+        }
+
+        Ok(Self {
+            all_timeslots,
+            restrictions,
+            exam_details,
+            morning_slots_by_date,
+            all_slots_by_date,
+        })
+    }
+
+    fn exam_details(&self, exam_id: ExamId) -> String {
+        self.exam_details
+            .get(&exam_id)
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| format!("ID {}", exam_id.0))
+    }
+
+    fn effective_timeslots(
+        &self,
+        mode: Option<TimeslotRestrictionMode>,
+        selected: &HashSet<TimeslotId>,
+    ) -> HashSet<TimeslotId> {
+        match mode {
+            Some(TimeslotRestrictionMode::Allow) => selected.clone(),
+            Some(TimeslotRestrictionMode::Deny) => self
+                .all_timeslots
+                .iter()
+                .copied()
+                .filter(|id| !selected.contains(id))
+                .collect(),
+            None => self.all_timeslots.clone(),
+        }
+    }
+}
+
 #[derive(Debug, thiserror::Error, serde::Serialize, specta::Type)]
 pub enum SolveError {
     #[error("Database error: {0}")]
@@ -54,13 +128,12 @@ fn run_feasibility_precheck(db: &mut SqliteConnection, n_timeslots: u64) -> Resu
 
     precheck_enrolled_subjects_have_sessions(db)?;
 
-    let all_timeslots = load_all_timeslot_ids(db)?;
-    let restrictions = load_exam_restrictions(db)?;
+    let ctx = PrecheckContext::load(db, n_timeslots)?;
 
-    precheck_exam_timeslot_domains(&all_timeslots, &restrictions)?;
-    precheck_same_time_pairs(&all_timeslots, &restrictions, db)?;
-    precheck_same_day_pairs(&all_timeslots, &restrictions, db)?;
-    precheck_pair_constraint_contradictions(db)?;
+    ctx.check_exam_timeslot_domains()?;
+    ctx.check_same_time_pairs(db)?;
+    ctx.check_same_day_pairs(db)?;
+    ctx.check_pair_constraint_contradictions(db)?;
 
     let rows = student::table
         .inner_join(enrolled_student::table)
@@ -99,6 +172,190 @@ fn run_feasibility_precheck(db: &mut SqliteConnection, n_timeslots: u64) -> Resu
     Ok(())
 }
 
+impl PrecheckContext {
+    fn check_exam_timeslot_domains(&self) -> Result<(), SolveError> {
+        for (&exam_id, &(mode, ref selected)) in &self.restrictions {
+            let feasible = self.effective_timeslots(mode, selected);
+            if feasible.is_empty() {
+                let details = self.exam_details(exam_id);
+                return Err(SolveError::PrecheckFailed {
+                    reason: format!(
+                        "Exam '{details}' has no feasible timeslots. It is restricted to {} timeslots but none are available.",
+                        match mode {
+                            Some(TimeslotRestrictionMode::Allow) => format!("one of {} allowed", selected.len()),
+                            Some(TimeslotRestrictionMode::Deny) => "all but".to_string(),
+                            None => "no".to_string(),
+                        }
+                    ),
+                });
+            }
+        }
+        Ok(())
+    }
+
+    fn check_same_time_pairs(&self, db: &mut SqliteConnection) -> Result<(), SolveError> {
+        let pairs = same_time_exam::table
+            .select((same_time_exam::exam1_id, same_time_exam::exam2_id))
+            .load::<(ExamId, ExamId)>(db)?;
+
+        for (exam1_id, exam2_id) in pairs {
+            let (mode1, selected1) =
+                self.restrictions
+                    .get(&exam1_id)
+                    .ok_or_else(|| SolveError::PrecheckFailed {
+                        reason: format!("Exam {} missing from restrictions", exam1_id.0),
+                    })?;
+            let (mode2, selected2) =
+                self.restrictions
+                    .get(&exam2_id)
+                    .ok_or_else(|| SolveError::PrecheckFailed {
+                        reason: format!("Exam {} missing from restrictions", exam2_id.0),
+                    })?;
+
+            let feasible1 = self.effective_timeslots(*mode1, selected1);
+            let feasible2 = self.effective_timeslots(*mode2, selected2);
+
+            let overlap_exists = feasible1.iter().any(|slot| feasible2.contains(slot));
+            if !overlap_exists {
+                return Err(SolveError::PrecheckFailed {
+                    reason: format!(
+                        "Same-time pair '{}' and '{}' has no common feasible timeslot. They must be scheduled together but have no overlapping available timeslots.",
+                        self.exam_details(exam1_id),
+                        self.exam_details(exam2_id),
+                    ),
+                });
+            }
+        }
+        Ok(())
+    }
+
+    fn check_same_day_pairs(&self, db: &mut SqliteConnection) -> Result<(), SolveError> {
+        let pairs = same_day_exam::table
+            .select((
+                same_day_exam::first_slot_exam_id,
+                same_day_exam::second_slot_exam_id,
+            ))
+            .load::<(ExamId, ExamId)>(db)?;
+
+        for (first_exam_id, second_exam_id) in pairs {
+            let (mode1, selected1) = self.restrictions.get(&first_exam_id).ok_or_else(|| {
+                SolveError::PrecheckFailed {
+                    reason: format!("Exam {} missing from restrictions", first_exam_id.0),
+                }
+            })?;
+            let (mode2, selected2) = self.restrictions.get(&second_exam_id).ok_or_else(|| {
+                SolveError::PrecheckFailed {
+                    reason: format!("Exam {} missing from restrictions", second_exam_id.0),
+                }
+            })?;
+
+            let feasible_first = self.effective_timeslots(*mode1, selected1);
+            let feasible_second = self.effective_timeslots(*mode2, selected2);
+
+            let mut found_valid_day = false;
+            let days_checked = self.all_slots_by_date.len();
+
+            for (date, all_day_slots) in &self.all_slots_by_date {
+                let morning_on_day = self.morning_slots_by_date.get(date);
+
+                let first_in_morning = morning_on_day
+                    .map(|m| m.iter().any(|slot| feasible_first.contains(slot)))
+                    .unwrap_or(false);
+                let second_in_afternoon = all_day_slots.iter().any(|slot| {
+                    feasible_second.contains(slot)
+                        && !morning_on_day.map(|m| m.contains(slot)).unwrap_or(true)
+                });
+
+                if first_in_morning && second_in_afternoon {
+                    found_valid_day = true;
+                    break;
+                }
+            }
+
+            if !found_valid_day {
+                let first_restriction_desc = match mode1 {
+                    Some(TimeslotRestrictionMode::Allow) => {
+                        if selected1.is_empty() {
+                            "no allowed timeslots".to_string()
+                        } else {
+                            format!("limited to {} timeslots", selected1.len())
+                        }
+                    }
+                    Some(TimeslotRestrictionMode::Deny) => {
+                        format!("denied {} timeslots", selected1.len())
+                    }
+                    None => "no restrictions".to_string(),
+                };
+                let second_restriction_desc = match mode2 {
+                    Some(TimeslotRestrictionMode::Allow) => {
+                        if selected2.is_empty() {
+                            "no allowed timeslots".to_string()
+                        } else {
+                            format!("limited to {} timeslots", selected2.len())
+                        }
+                    }
+                    Some(TimeslotRestrictionMode::Deny) => {
+                        format!("denied {} timeslots", selected2.len())
+                    }
+                    None => "no restrictions".to_string(),
+                };
+
+                return Err(SolveError::PrecheckFailed {
+                    reason: format!(
+                        "Same-day pair '{}' and '{}' has no feasible day combination. \
+The first exam ({}) must be in a morning slot, and the second exam ({}) must be in an afternoon slot on the same day. \
+Checked {} days but found no valid morning+afternoon combination.",
+                        self.exam_details(first_exam_id),
+                        self.exam_details(second_exam_id),
+                        first_restriction_desc,
+                        second_restriction_desc,
+                        days_checked,
+                    ),
+                });
+            }
+        }
+        Ok(())
+    }
+
+    fn check_pair_constraint_contradictions(
+        &self,
+        db: &mut SqliteConnection,
+    ) -> Result<(), SolveError> {
+        let same_time_pairs = same_time_exam::table
+            .select((same_time_exam::exam1_id, same_time_exam::exam2_id))
+            .load::<(ExamId, ExamId)>(db)?
+            .into_iter()
+            .map(|(e1, e2)| if e1 <= e2 { (e1, e2) } else { (e2, e1) })
+            .collect::<HashSet<_>>();
+
+        let different_week_pairs = different_week_exams::table
+            .select((
+                different_week_exams::exam1_id,
+                different_week_exams::exam2_id,
+            ))
+            .load::<(ExamId, ExamId)>(db)?
+            .into_iter()
+            .map(|(e1, e2)| if e1 <= e2 { (e1, e2) } else { (e2, e1) })
+            .collect::<HashSet<_>>();
+
+        if let Some((exam1, exam2)) = same_time_pairs
+            .intersection(&different_week_pairs)
+            .next()
+            .copied()
+        {
+            return Err(SolveError::PrecheckFailed {
+                reason: format!(
+                    "Exams '{}' and '{}' are constrained to be both at the same time AND in different weeks. \
+This is impossible: if they're at the same time, they're on the same day/week; if they're in different weeks, they can't be at the same time.",
+                    self.exam_details(exam1),
+                    self.exam_details(exam2),
+                ),
+            });
+        }
+        Ok(())
+    }
+}
+
 /// AI-generated (GPT-5.3-codex).
 fn precheck_enrolled_subjects_have_sessions(db: &mut SqliteConnection) -> Result<(), SolveError> {
     let enrolled_subjects = enrolled_student::table
@@ -111,6 +368,7 @@ fn precheck_enrolled_subjects_have_sessions(db: &mut SqliteConnection) -> Result
         .select(exam::subject_id)
         .distinct()
         .load::<SubjectId>(db)?;
+
     let session_subjects = subjects_with_sessions.into_iter().collect::<HashSet<_>>();
 
     for subject_id in enrolled_subjects {
@@ -160,191 +418,20 @@ fn load_exam_restrictions(db: &mut SqliteConnection) -> Result<ExamRestrictionMa
 }
 
 /// AI-generated (GPT-5.3-codex).
-fn effective_exam_timeslots(
-    all_timeslots: &HashSet<TimeslotId>,
-    mode: Option<TimeslotRestrictionMode>,
-    selected: &HashSet<TimeslotId>,
-) -> HashSet<TimeslotId> {
-    match mode {
-        Some(TimeslotRestrictionMode::Allow) => selected.clone(),
-        Some(TimeslotRestrictionMode::Deny) => all_timeslots
-            .iter()
-            .copied()
-            .filter(|id| !selected.contains(id))
-            .collect(),
-        None => all_timeslots.clone(),
-    }
-}
-
-/// AI-generated (GPT-5.3-codex).
-fn precheck_exam_timeslot_domains(
-    all_timeslots: &HashSet<TimeslotId>,
-    restrictions: &ExamRestrictionMap,
-) -> Result<(), SolveError> {
-    for (&exam_id, &(mode, ref selected)) in restrictions {
-        let feasible = effective_exam_timeslots(all_timeslots, mode, selected);
-        if feasible.is_empty() {
-            return Err(SolveError::PrecheckFailed {
-                reason: format!("Exam {} has no feasible timeslots", exam_id.0),
-            });
-        }
-    }
-
-    Ok(())
-}
-
-/// AI-generated (GPT-5.3-codex).
-fn precheck_same_time_pairs(
-    all_timeslots: &HashSet<TimeslotId>,
-    restrictions: &ExamRestrictionMap,
+fn load_exam_details(
     db: &mut SqliteConnection,
-) -> Result<(), SolveError> {
-    let pairs = same_time_exam::table
-        .select((same_time_exam::exam1_id, same_time_exam::exam2_id))
-        .load::<(ExamId, ExamId)>(db)?;
+) -> Result<HashMap<ExamId, ExamDetails>, SolveError> {
+    let rows = exam::table
+        .inner_join(subject::table.on(exam::subject_id.eq(subject::id)))
+        .select((exam::id, subject::name, exam::grade, exam::subject_id))
+        .load::<(ExamId, String, i32, SubjectId)>(db)?;
 
-    for (exam1_id, exam2_id) in pairs {
-        let (mode1, selected1) =
-            restrictions
-                .get(&exam1_id)
-                .ok_or_else(|| SolveError::PrecheckFailed {
-                    reason: format!("Exam {} missing from restrictions", exam1_id.0),
-                })?;
-        let (mode2, selected2) =
-            restrictions
-                .get(&exam2_id)
-                .ok_or_else(|| SolveError::PrecheckFailed {
-                    reason: format!("Exam {} missing from restrictions", exam2_id.0),
-                })?;
-
-        let feasible1 = effective_exam_timeslots(all_timeslots, *mode1, selected1);
-        let feasible2 = effective_exam_timeslots(all_timeslots, *mode2, selected2);
-
-        let overlap_exists = feasible1.iter().any(|slot| feasible2.contains(slot));
-        if !overlap_exists {
-            return Err(SolveError::PrecheckFailed {
-                reason: format!(
-                    "Same-time pair ({}, {}) has no common feasible timeslot",
-                    exam1_id.0, exam2_id.0
-                ),
-            });
-        }
-    }
-
-    Ok(())
-}
-
-/// AI-generated (GPT-5.3-codex).
-fn precheck_same_day_pairs(
-    all_timeslots: &HashSet<TimeslotId>,
-    restrictions: &ExamRestrictionMap,
-    db: &mut SqliteConnection,
-) -> Result<(), SolveError> {
-    let timeslot_rows = timeslot::table
-        .select((timeslot::id, timeslot::date, timeslot::slot))
-        .load::<(TimeslotId, time::Date, i32)>(db)?;
-
-    let mut by_date: HashMap<time::Date, (Vec<TimeslotId>, Vec<TimeslotId>)> = HashMap::new();
-    for (id, date, slot) in timeslot_rows {
-        let entry = by_date
-            .entry(date)
-            .or_insert_with(|| (Vec::new(), Vec::new()));
-        if slot == 0 {
-            entry.0.push(id);
-        } else {
-            entry.1.push(id);
-        }
-    }
-
-    let pairs = same_day_exam::table
-        .select((
-            same_day_exam::first_slot_exam_id,
-            same_day_exam::second_slot_exam_id,
-        ))
-        .load::<(ExamId, ExamId)>(db)?;
-
-    for (first_exam_id, second_exam_id) in pairs {
-        let (mode1, selected1) =
-            restrictions
-                .get(&first_exam_id)
-                .ok_or_else(|| SolveError::PrecheckFailed {
-                    reason: format!("Exam {} missing from restrictions", first_exam_id.0),
-                })?;
-        let (mode2, selected2) =
-            restrictions
-                .get(&second_exam_id)
-                .ok_or_else(|| SolveError::PrecheckFailed {
-                    reason: format!("Exam {} missing from restrictions", second_exam_id.0),
-                })?;
-
-        let feasible_first = effective_exam_timeslots(all_timeslots, *mode1, selected1);
-        let feasible_second = effective_exam_timeslots(all_timeslots, *mode2, selected2);
-
-        let day_pair_exists = by_date.values().any(|(morning, non_morning)| {
-            morning.iter().any(|slot| feasible_first.contains(slot))
-                && non_morning
-                    .iter()
-                    .any(|slot| feasible_second.contains(slot))
-        });
-
-        if !day_pair_exists {
-            return Err(SolveError::PrecheckFailed {
-                reason: format!(
-                    "Same-day pair ({}, {}) has no feasible morning/day combination",
-                    first_exam_id.0, second_exam_id.0
-                ),
-            });
-        }
-    }
-
-    Ok(())
-}
-
-/// AI-generated (GPT-5.3-codex).
-fn precheck_pair_constraint_contradictions(db: &mut SqliteConnection) -> Result<(), SolveError> {
-    let same_time_pairs = same_time_exam::table
-        .select((same_time_exam::exam1_id, same_time_exam::exam2_id))
-        .load::<(ExamId, ExamId)>(db)?
+    Ok(rows
         .into_iter()
-        .map(normalize_exam_pair)
-        .collect::<HashSet<_>>();
-
-    let different_week_pairs = different_week_exams::table
-        .select((
-            different_week_exams::exam1_id,
-            different_week_exams::exam2_id,
-        ))
-        .load::<(ExamId, ExamId)>(db)?
-        .into_iter()
-        .map(normalize_exam_pair)
-        .collect::<HashSet<_>>();
-
-    if let Some((exam1, exam2)) = same_time_pairs
-        .intersection(&different_week_pairs)
-        .next()
-        .copied()
-    {
-        return Err(SolveError::PrecheckFailed {
-            reason: format!(
-                "Pair ({}, {}) cannot be both same-time and different-week",
-                exam1.0, exam2.0
-            ),
-        });
-    }
-
-    Ok(())
+        .map(|(id, name, grade, _)| (id, ExamDetails { name, grade }))
+        .collect())
 }
 
-/// AI-generated (GPT-5.3-codex).
-fn normalize_exam_pair((exam1, exam2): (ExamId, ExamId)) -> (ExamId, ExamId) {
-    if exam1 <= exam2 {
-        (exam1, exam2)
-    } else {
-        (exam2, exam1)
-    }
-}
-
-/// AI-generated (GPT-5.3-codex).
 fn validate_locked_assignments(
     session_ids: &[SessionId],
     all_timeslots: &HashSet<TimeslotId>,
