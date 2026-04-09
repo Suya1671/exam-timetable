@@ -17,13 +17,13 @@ jobs:
       matrix:
         include:
           - platform: ubuntu-latest
-            args: ''
+            args: '--features gh-release'
           - platform: macos-latest
-            args: '--target aarch64-apple-darwin'
+            args: '--target aarch64-apple-darwin --features gh-release'
           - platform: macos-latest
-            args: '--target x86_64-apple-darwin'
+            args: '--target x86_64-apple-darwin --features gh-release'
           - platform: windows-latest
-            args: ''
+            args: '--features gh-release'
 
     runs-on: ${{ matrix.platform }}
 
@@ -32,6 +32,7 @@ jobs:
       # macOS 13.3+. Without this, cmake injects -mmacosx-version-min=10.13
       # and the SDK marks those symbols unavailable, breaking the build.
       MACOSX_DEPLOYMENT_TARGET: '13.3'
+      CMAKE_OSX_DEPLOYMENT_TARGET: '13.3'
 
     steps:
       - uses: actions/checkout@v6

@@ -32,6 +32,8 @@ specta = { version = "2.0.0-rc.22", features = ["derive", "export", "function"] 
 stable_deref_trait = { version = "1" }
 tauri-utils = { version = "2", default-features = false, features = ["build", "compression", "resources"] }
 uuid = { version = "1", features = ["serde", "v4"] }
+z3 = { version = "0.20", default-features = false, features = ["gh-release"] }
+z3-sys = { version = "0.11", default-features = false, features = ["gh-release"] }
 
 [build-dependencies]
 either = { version = "1", features = ["use_std"] }

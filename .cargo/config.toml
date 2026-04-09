@@ -2,12 +2,6 @@
 linker = "clang"
 rustflags = ["-C", "link-arg=-fuse-ld=mold"]
 
-[target.aarch64-apple-darwin]
-rustflags = ["--target=arm64-apple-macosx13.3"]
-
-[target.x86_64-apple-darwin]
-rustflags = ["--target=x86_64-apple-macosx13.3"]
-
 [alias]
 cov = "llvm-cov nextest --all-features --summary-only"
 cov-html = "llvm-cov nextest --all-features --html --output-dir coverage"
