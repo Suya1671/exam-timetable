@@ -1,6 +1,7 @@
 use diesel::{
-    ExpressionMethods, JoinOnDsl, NullableExpressionMethods, QueryDsl, RunQueryDsl,
-    SqliteConnection,
+    dsl::{exists, not},
+    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, NullableExpressionMethods, QueryDsl,
+    RunQueryDsl, SqliteConnection,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -137,8 +138,11 @@ fn run_feasibility_precheck(db: &mut SqliteConnection, n_timeslots: u64) -> Resu
 
     let rows = student::table
         .inner_join(enrolled_student::table)
-        .inner_join(subject::table.on(enrolled_student::subject_id.eq(subject::id)))
-        .inner_join(exam::table.on(exam::subject_id.eq(subject::id)))
+        .inner_join(
+            exam::table.on(exam::subject_id
+                .eq(enrolled_student::subject_id)
+                .and(exam::grade.eq(student::grade))),
+        )
         .inner_join(session::table.on(session::exam_id.eq(exam::id)))
         .select((student::id, student::name, session::id))
         .load::<(StudentId, String, SessionId)>(db)?;

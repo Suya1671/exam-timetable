@@ -7,7 +7,7 @@ use entity::{
     id::{SessionId, StudentId, SubjectId, TimeslotId},
     schema::{
         different_week_exams, enrolled_student, exam, exam_timeslot_restriction, same_day_exam,
-        same_time_exam, session, student, subject, timeslot,
+        same_time_exam, session, student, timeslot,
     },
 };
 use itertools::Itertools;
@@ -38,8 +38,11 @@ impl<'a> SchedulerBuilder<'a> {
     ) -> Result<(), SolveError> {
         let rows = student::table
             .inner_join(enrolled_student::table)
-            .inner_join(subject::table.on(enrolled_student::subject_id.eq(subject::id)))
-            .inner_join(exam::table.on(exam::subject_id.eq(subject::id)))
+            .inner_join(
+                exam::table.on(exam::subject_id
+                    .eq(enrolled_student::subject_id)
+                    .and(exam::grade.eq(student::grade))),
+            )
             .inner_join(session::table.on(session::exam_id.eq(exam::id)))
             .select((student::id, session::id))
             .load_iter::<(StudentId, SessionId), DefaultLoadingMode>(db)?;
