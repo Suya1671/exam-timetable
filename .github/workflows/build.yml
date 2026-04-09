@@ -32,6 +32,9 @@ jobs:
       # macOS 13.3+. Without this, cmake injects -mmacosx-version-min=10.13
       # and the SDK marks those symbols unavailable, breaking the build.
       MACOSX_DEPLOYMENT_TARGET: '13.3'
+      CXXFLAGS: '-mmacosx-version-min=13.3'
+      CFLAGS: '-mmacosx-version-min=13.3'
+
     steps:
       - uses: actions/checkout@v6
 
