@@ -67,14 +67,7 @@ mod tests {
         tracker.assert_hard(
             &optimizer,
             &Bool::from_bool(false),
-            ConstraintError::DomainLowerBound {
-                session: entity::id::SessionId(1),
-            },
-        );
-        tracker.assert_hard(
-            &optimizer,
-            &Bool::from_bool(true),
-            ConstraintError::DomainUpperBound {
+            ConstraintError::DomainBounds {
                 session: entity::id::SessionId(1),
                 n_timeslots: 3,
             },
@@ -85,8 +78,9 @@ mod tests {
         let mut unsat_core_constraints = tracker.unsat_core_constraints(&optimizer);
 
         assert!(unsat_core_constraints.any(|err| err
-            == &ConstraintError::DomainLowerBound {
-                session: entity::id::SessionId(1)
+            == &ConstraintError::DomainBounds {
+                session: entity::id::SessionId(1),
+                n_timeslots: 3,
             }));
     }
 

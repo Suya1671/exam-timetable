@@ -11,16 +11,11 @@ use serde::{Deserialize, Serialize};
 /// constraints for human-readable diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 pub enum ConstraintError {
-    /// A session was constrained to be assigned to a non-negative timeslot index.
-    DomainLowerBound {
-        /// The session for which the lower-bound domain constraint was asserted.
+    /// A session was constrained to be assigned to a valid timeslot (0 <= x < n_timeslots).
+    DomainBounds {
+        /// The session for which the domain bounds constraint was asserted.
         session: SessionId,
-    },
-    /// A session was constrained to be assigned to a timeslot strictly below `n_timeslots`.
-    DomainUpperBound {
-        /// The session for which the upper-bound domain constraint was asserted.
-        session: SessionId,
-        /// The total number of available timeslots used as the exclusive upper bound.
+        /// The total number of available timeslots.
         n_timeslots: u64,
     },
     /// A session was constrained to be assigned to one of a finite set of allowed timeslots.
@@ -39,8 +34,8 @@ pub enum ConstraintError {
     },
     /// A student's exams were constrained to all occur in distinct timeslots.
     StudentDistinct {
-        /// The student for whom no-overlap exam constraints were asserted.
-        student: StudentId,
+        /// The students for whom no-overlap exam constraints were asserted.
+        students: Vec<StudentId>,
         /// The sessions that must be pairwise non-overlapping for the student.
         sessions: Vec<SessionId>,
     },

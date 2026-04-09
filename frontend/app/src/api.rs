@@ -218,6 +218,11 @@ pub trait Api {
         locked_slots: Vec<LockedTimetableSlot>,
     ) -> Result<SolveSessionStart, InitSolverError>;
 
+    async fn solve_single<R: Runtime>(
+        app_handle: AppHandle<R>,
+        locked_slots: Vec<LockedTimetableSlot>,
+    ) -> Result<HashMap<i32, TimeslotId>, InitSolverError>;
+
     async fn pause_solve_session<R: Runtime>(
         app_handle: AppHandle<R>,
         session_id: usize,
@@ -300,19 +305,19 @@ impl Api for ApiImpl {
                 .map(|slot| (slot.session_id, slot.timeslot_id))
                 .collect::<Vec<_>>();
 
+            // Use the streaming solve (multiple solutions iterator)
             let mut solutions =
                 match backend::solve_with_locked_assignments(&mut conn, &fixed_slots) {
                     Ok(solutions) => solutions.map(|solution| {
                         solution
                             .into_iter()
-                            .map(|(exam_id, timeslot_id)| (exam_id.0, timeslot_id))
+                            .map(|(session_id, timeslot_id)| (session_id.0, timeslot_id))
                             .collect::<HashMap<i32, TimeslotId>>()
                     }),
                     Err(err) => {
                         init_tx
                             .send(Err(InitSolverError::Solver(err.to_string())))
                             .expect("Failed to send solver error to main thread");
-
                         return;
                     }
                 };
@@ -372,6 +377,33 @@ impl Api for ApiImpl {
             Ok(Err(err)) => Err(err),
             Err(err) => Err(InitSolverError::Recv(err.to_string())),
         }
+    }
+
+    async fn solve_single<R: Runtime>(
+        self,
+        app: AppHandle<R>,
+        locked_slots: Vec<LockedTimetableSlot>,
+    ) -> Result<HashMap<i32, TimeslotId>, InitSolverError> {
+        let state = app.state::<crate::AppState>();
+        let mut conn = state
+            .db_conn
+            .lock()
+            .map_err(|err| InitSolverError::LockPoison(err.to_string()))?;
+
+        let fixed_slots = locked_slots
+            .iter()
+            .map(|slot| (slot.session_id, slot.timeslot_id))
+            .collect::<Vec<_>>();
+
+        let solution = backend::solve_one(&mut conn, &fixed_slots)
+            .map_err(|err| InitSolverError::Solver(err.to_string()))?;
+
+        dbg!(&solution);
+
+        Ok(solution
+            .into_iter()
+            .map(|(session_id, timeslot_id)| (session_id.0, timeslot_id))
+            .collect())
     }
 
     async fn pause_solve_session<R: Runtime>(

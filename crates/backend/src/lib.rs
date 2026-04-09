@@ -505,6 +505,43 @@ pub fn solve(
     solve_with_locked_assignments(db, &[])
 }
 
+/// Solve with a single solution (faster, no optimization).
+/// AI-generated (minimax-m2.5).
+pub fn solve_one(
+    db: &mut SqliteConnection,
+    locked_assignments: &[(SessionId, TimeslotId)],
+) -> Result<HashMap<SessionId, TimeslotId>, SolveError> {
+    let mappings = SolverAdapter::new(db)?;
+    let n_timeslots: i64 = timeslot::table.count().get_result(db)?;
+    let n_timeslots_u64: u64 = n_timeslots.try_into().unwrap();
+    let all_timeslots = load_all_timeslot_ids(db)?;
+
+    run_feasibility_precheck(db, n_timeslots_u64)?;
+    validate_locked_assignments(mappings.session_ids(), &all_timeslots, locked_assignments)?;
+
+    let mut scheduler = ExamScheduler::new(mappings.session_ids().iter().copied(), n_timeslots_u64);
+
+    let mut builder = SchedulerBuilder::new(&mappings, &mut scheduler);
+    builder.apply_student_clashes_from_db(db)?;
+    builder.apply_timeslot_restrictions_for_exams_from_db(db)?;
+    builder.apply_subject_exam_distance_from_db(db)?;
+    builder.apply_same_time_constraints_from_db(db)?;
+    builder.apply_same_day_constraints_from_db(db)?;
+    builder.apply_week_separation_from_db(db)?;
+    builder.apply_minimize_exams_per_day(db)?;
+
+    for (session_id, timeslot_id) in locked_assignments {
+        mappings.apply_allowed_timeslots(
+            &mut scheduler,
+            *session_id,
+            std::iter::once(*timeslot_id),
+        );
+    }
+
+    let solution = scheduler.solve_one()?;
+    Ok(mappings.map_solution(solution))
+}
+
 /// AI-generated (GPT-5.3-codex).
 pub fn solve_with_locked_assignments(
     db: &mut SqliteConnection,

@@ -32,6 +32,7 @@ impl<'a> SchedulerBuilder<'a> {
     }
 
     /// Load and apply student clash constraints from the database.
+    /// Groups students with identical session sets to deduplicate identical constraints.
     pub fn apply_student_clashes_from_db(
         &mut self,
         db: &mut SqliteConnection,
@@ -45,29 +46,47 @@ impl<'a> SchedulerBuilder<'a> {
             )
             .inner_join(session::table.on(session::exam_id.eq(exam::id)))
             .select((student::id, session::id))
+            .distinct()
             .load_iter::<(StudentId, SessionId), DefaultLoadingMode>(db)?;
 
-        let mut map: HashMap<_, Vec<_>> = HashMap::new();
+        let mut student_sessions: HashMap<StudentId, Vec<SessionId>> = HashMap::new();
 
         for row in rows {
             let (student_id, session_id) = row?;
-            map.entry(student_id).or_default().push(session_id);
+            student_sessions
+                .entry(student_id)
+                .or_default()
+                .push(session_id);
         }
 
-        for (student, sessions) in map {
-            self.scheduler.setup_student(student, sessions);
+        let mut session_to_students: HashMap<Vec<SessionId>, Vec<StudentId>> = HashMap::new();
+
+        for (student, mut sessions) in student_sessions {
+            sessions.sort();
+            sessions.dedup();
+            session_to_students
+                .entry(sessions)
+                .or_default()
+                .push(student);
+        }
+
+        for (sessions, students) in session_to_students {
+            self.scheduler.setup_students(students, sessions);
         }
 
         Ok(())
     }
 
     /// Load and apply allowed/disallowed timeslot constraints per exam.
+    /// Only applies to first session (sequence=0) of each exam to avoid duplicates.
     pub fn apply_timeslot_restrictions_for_exams_from_db(
         &mut self,
         db: &mut SqliteConnection,
     ) -> Result<(), SolveError> {
-        let rows = session::table
-            .inner_join(exam::table.on(exam::id.eq(session::exam_id)))
+        let rows = exam::table
+            .inner_join(
+                session::table.on(session::exam_id.eq(exam::id).and(session::sequence.eq(0))),
+            )
             .left_join(
                 exam_timeslot_restriction::table
                     .on(exam_timeslot_restriction::exam_id.eq(exam::id)),

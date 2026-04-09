@@ -186,7 +186,7 @@
 				const readingStart = override?.readingStartTime ?? defaultReadingStart;
 				const examStart = override?.examStartTime ?? defaultExamStart;
 				const examEnd =
-					override?.examEndTime ?? examStart.add({ hours: session.durationHours });
+					override?.examEndTime ?? examStart.add({ minutes: Math.round(session.durationHours * 60) });
 
 				row.examsByGrade[gradeIndex].push({
 					sessionId: session.sessionId,
@@ -215,12 +215,10 @@
 	});
 
 	/** AI-generated (GPT-5.3-codex). */
-	function parseSolution(solution: Partial<Record<number, TimeslotId>>) {
+	function parseSolution(solution: Record<number, TimeslotId>) {
 		const map = new SvelteMap<number, number>();
 		for (const [sessionId, timeslotId] of Object.entries(solution)) {
-			if (typeof timeslotId === 'number') {
-				map.set(Number(sessionId), timeslotId);
-			}
+			map.set(Number(sessionId), timeslotId);
 		}
 		return map;
 	}
@@ -228,19 +226,6 @@
 	let solveSessionId = $state<number | null>(null);
 	let solveDone = $state(false);
 	let streamPaused = $state(false);
-
-	/** AI-generated (GPT-5.3-codex). */
-	function appendSolutions(solutions: Array<Partial<Record<number, TimeslotId>>>) {
-		if (solutions.length === 0) return;
-		const parsed = solutions.map((solution: Partial<Record<number, TimeslotId>>) =>
-			parseSolution(solution)
-		);
-		const previousLength = variants.length;
-		variants = [...variants, ...parsed];
-		if (previousLength === 0) {
-			variantIndex = 0;
-		}
-	}
 
 	/** AI-generated (GPT-5.3-codex). */
 	function handleSolveUpdate(update: NewTimetableUpdate) {
@@ -252,7 +237,11 @@
 		}
 
 		if ('Timetable' in update) {
-			appendSolutions([update.Timetable]);
+		    // typesafety: we know that the key and the value always exist as per the rust-side arguments
+			variants.push(parseSolution(update.Timetable as Record<number, TimeslotId>));
+			if (variants.length === 1) {
+				variantIndex = 0;
+			}
 		}
 	}
 
@@ -417,6 +406,41 @@
 		}
 	}
 
+	/** AI-generated (minimax-m2.5). */
+	async function solveOnce() {
+		solving = true;
+		variants = [];
+		variantIndex = -1;
+		solveDone = false;
+		streamPaused = false;
+
+		if (solveSessionId !== null) {
+			try {
+				await backend.stop_solve_session(solveSessionId);
+			} catch (error) {
+				console.error('Failed to stop previous solve session', error);
+			}
+			solveSessionId = null;
+		}
+
+		try {
+			const result = await backend.solve_single(buildLockedSlots());
+            // typesafety: we know that the key and the value always exist as per the rust-side arguments
+			variants.push(parseSolution(result as Record<number, TimeslotId>));
+			if (variants.length === 1) {
+				variantIndex = 0;
+			}
+			solveDone = true;
+		} catch (e) {
+			const error = e as InitSolverError;
+			console.error('Error during solve once:', error);
+			alert(`An error occurred while solving: ${describeInitSolverError(error)}`);
+			solveDone = true;
+		} finally {
+			solving = false;
+		}
+	}
+
 	/** AI-generated (GPT-5.3-codex). */
 	function moveExam(sessionId: number, timeslotId: number, grade: number) {
 		const session = sessions.find((session) => session.sessionId === sessionId);
@@ -537,20 +561,17 @@
 				</select>
 			</label>
 		</li>
-		<li><Button onclick={solve} disabled={solving}>{solving ? 'Solving...' : 'Solve'}</Button></li>
-		<li>
-			<Button onclick={saveCurrentTimetable} disabled={assignments.size === 0}
-				>Save Timetable</Button
-			>
-		</li>
-		<li>
-			<Button onclick={toggleStream} disabled={solveSessionId === null || solveDone}
-				>{streamPaused ? 'Resume stream' : 'Pause stream'}</Button
-			>
-		</li>
-		<li><Button onclick={stopSolveSession} disabled={solveSessionId === null}>Stop</Button></li>
-		<li><Button onclick={printSheet}>Print Timetable</Button></li>
-		<li><Button onclick={resetEdits}>Reset Edits</Button></li>
+		<li><Button onclick={saveCurrentTimetable} disabled={assignments.size === 0}>Save</Button></li>
+		<li class="divider"></li>
+		<li><Button onclick={solveOnce} disabled={solving}>{solving ? 'Solving...' : 'Quick Solve'}</Button></li>
+		<li><Button onclick={solve} disabled={solving}>Stream</Button></li>
+		{#if solveSessionId !== null && !solveDone}
+			<li><Button onclick={toggleStream}>{streamPaused ? 'Resume' : 'Pause'}</Button></li>
+			<li><Button onclick={stopSolveSession}>Stop</Button></li>
+		{/if}
+		<li class="divider"></li>
+		<li><Button onclick={printSheet}>Print</Button></li>
+		<li><Button onclick={resetEdits}>Reset</Button></li>
 	</menu>
 </header>
 
@@ -614,6 +635,13 @@
 	menu {
 		list-style: none;
 		padding: 0;
+	}
+
+	li.divider {
+		width: 2px;
+		height: 1.5rem;
+		background-color: oklch(70% 0 0);
+		margin: 0 0.25rem;
 	}
 
 	.timetable-select {

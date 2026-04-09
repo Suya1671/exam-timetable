@@ -88,8 +88,9 @@ export type SqlValue = "Null" | { Bool: boolean } | { Int: number } | { Float: n
  */
 export type TimeslotId = number
 
-const ARGS_MAP = { '':'{"pause_solve_session":["session_id"],"sql":["sql","params","method"],"sql_batch":["queries"],"start_solve_session":["on_new_timetable","locked_slots"],"stop_solve_session":["session_id"]}' }
+const ARGS_MAP = { '':'{"pause_solve_session":["session_id"],"solve_single":["locked_slots"],"sql":["sql","params","method"],"sql_batch":["queries"],"start_solve_session":["on_new_timetable","locked_slots"],"stop_solve_session":["session_id"]}' }
 export type Router = { "": {pause_solve_session: (sessionId: number) => Promise<null>, 
+solve_single: (lockedSlots: LockedTimetableSlot[]) => Promise<Partial<{ [key in number]: TimeslotId }>>, 
 sql: (sql: string, params: SqlParam[], method: string) => Promise<SqlQueryResult>, 
 sql_batch: (queries: SqlBatchQuery[]) => Promise<SqlQueryResult[]>, 
 start_solve_session: (onNewTimetable: TAURI_CHANNEL<NewTimetableUpdate>, lockedSlots: LockedTimetableSlot[]) => Promise<SolveSessionStart>, 

@@ -12,11 +12,10 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::thread::available_parallelism;
 use std::time::Duration;
-use z3::ast::Array;
 use z3::Params;
 use z3::{
     ast::{Ast, Bool, Int},
-    Model, Optimize, SatResult, Solvable, Sort,
+    Model, Optimize, SatResult, Solvable,
 };
 
 /// Solver timeslot index (ordered by date, slot).
@@ -65,7 +64,7 @@ impl ExamScheduler {
     ///     - Implicitly satisfied by the fact that we only have 1 variable per session, so it can only be assigned to 1 timeslot
     ///     - This also means each session is scheduled at exactly one timeslot
     pub fn new(session_ids: impl Iterator<Item = SessionId>, n_timeslots: u64) -> Self {
-        Self::new_with_timeout(session_ids, n_timeslots, Duration::from_secs(300))
+        Self::new_with_timeout(session_ids, n_timeslots, Duration::from_hours(2))
     }
 
     /// Initialises an exam scheduler with a custom timeout.
@@ -88,10 +87,13 @@ impl ExamScheduler {
         params.set_u32("smt.threads", avail_parallel);
 
         params.set_f64("timeout", timeout.as_millis() as f64);
-        params.set_bool("model.partial", true);
-        params.set_bool("smt.random_seed", true);
 
-        params.set_u32("sat.restart_max_conflicts", 2000);
+        params.set_f64("sat.random_freq", 0.02);
+
+        params.set_bool("sat.simplify_implies", true);
+        params.set_bool("sat.enable_pre_simplify", true);
+        params.set_bool("sat.force_cleanup", true);
+
         params.set_symbol("sat.solver", "cadical");
         params.set_bool("sat.euf", true);
 
@@ -115,17 +117,15 @@ impl ExamScheduler {
         };
 
         for (&session, session_var) in &scheduler.assignment {
-            // Domain constraint: each exam must be assigned to a valid timeslot (i.e. within index bounds)
-            scheduler.tracker.assert_hard(
-                &scheduler.optimizer,
-                &session_var.ge(0),
-                ConstraintError::DomainLowerBound { session },
-            );
+            // Domain constraint: 0 <= session_var < n_timeslots (combined into one constraint)
+            let lower = session_var.ge(0);
+            let upper = session_var.lt(n_timeslots);
+            let bounds = lower & upper; // Use & for Bool AND
 
             scheduler.tracker.assert_hard(
                 &scheduler.optimizer,
-                &session_var.lt(n_timeslots),
-                ConstraintError::DomainUpperBound {
+                &bounds,
+                ConstraintError::DomainBounds {
                     session,
                     n_timeslots,
                 },
@@ -133,17 +133,6 @@ impl ExamScheduler {
         }
 
         scheduler
-    }
-
-    fn create_property_array(mapping: impl Iterator<Item = (TimeslotIndex, u64)>) -> Array {
-        let default = Int::from_i64(-1);
-        let mut arr = Array::const_array(&Sort::int(), &default);
-
-        for (timeslot, value) in mapping {
-            arr = arr.store(&Int::from_u64(timeslot.0), &Int::from_u64(value));
-        }
-
-        arr
     }
 
     /// Add allowed timeslots for an exam session
@@ -164,15 +153,13 @@ impl ExamScheduler {
     ) {
         let exam_timeslot = self.assignment.get(&session).unwrap();
 
-        // allowed[t] = 1 if allowed, else 0
-        let mut allowed = Array::const_array(&Sort::int(), &Int::from_i64(0));
-
-        for timeslot in &allowed_timeslots {
-            allowed = allowed.store(&Int::from_u64(timeslot.0), &Int::from_i64(1));
-        }
-
-        // Constraint: allowed[exam_timeslot] == 1
-        let is_allowed = allowed.select(exam_timeslot).eq(Int::from_i64(1));
+        // Use OR of equals instead of array lookup for better performance
+        let is_allowed = Bool::or(
+            &allowed_timeslots
+                .iter()
+                .map(|&t| exam_timeslot.eq(t.0))
+                .collect::<Vec<_>>(),
+        );
 
         self.tracker.assert_hard(
             &self.optimizer,
@@ -199,15 +186,13 @@ impl ExamScheduler {
     ) {
         let exam_timeslot = self.assignment.get(&session).unwrap();
 
-        // disallowed[t] = 1 if t is disallowed, else 0
-        let mut disallowed = Array::const_array(&Sort::int(), &Int::from_i64(0));
-
-        for timeslot in &disallowed_timeslots {
-            disallowed = disallowed.store(&Int::from_u64(timeslot.0), &Int::from_i64(1));
-        }
-
-        // Constraint: exam_timeslot should NOT be disallowed
-        let not_disallowed = disallowed.select(exam_timeslot).eq(Int::from_i64(0));
+        // Use AND of not-equals for better performance
+        let not_disallowed = Bool::and(
+            &disallowed_timeslots
+                .iter()
+                .map(|&t| exam_timeslot.ne(t.0))
+                .collect::<Vec<_>>(),
+        );
 
         self.tracker.assert_hard(
             &self.optimizer,
@@ -299,17 +284,25 @@ impl ExamScheduler {
         let a = self.assignment.get(&session1).unwrap();
         let b = self.assignment.get(&session2).unwrap();
 
-        let arr = Self::create_property_array(
-            mapping
-                .iter()
-                .map(|(&timeslot, &property)| (timeslot, property)),
-        );
-        let property_a = arr.select(a);
-        let property_b = arr.select(b);
+        let mut week_timeslots: HashMap<u64, Vec<u64>> = HashMap::new();
+        for (&timeslot, &week) in &mapping {
+            week_timeslots.entry(week).or_default().push(timeslot.0);
+        }
 
+        let mut week_constraints = Vec::new();
+        for (_, timeslots) in week_timeslots {
+            if timeslots.is_empty() {
+                continue;
+            }
+            let a_in_week = Bool::or(&timeslots.iter().map(|&t| a.eq(t)).collect::<Vec<_>>());
+            let b_in_week = Bool::or(&timeslots.iter().map(|&t| b.eq(t)).collect::<Vec<_>>());
+            week_constraints.push(Bool::or(&[&a_in_week.not(), &b_in_week.not()]));
+        }
+
+        let combined = Bool::and(&week_constraints);
         self.tracker.assert_hard(
             &self.optimizer,
-            &property_a.eq(property_b).not(),
+            &combined,
             ConstraintError::SeparateExamGroups {
                 session1,
                 session2,
@@ -382,22 +375,19 @@ impl ExamScheduler {
     /// # Returns
     /// - The number of sessions that happen on that day
     fn exams_on_day(&self, sessions: &[SessionId], day_timeslots: &[TimeslotIndex]) -> Int {
-        // day[t] = 1 if timeslot belongs to this day
-        let mut day_arr = Array::const_array(&Sort::int(), &Int::from_i64(0));
-
-        for t in day_timeslots {
-            day_arr = day_arr.store(&Int::from_u64(t.0), &Int::from_i64(1));
-        }
-
         sessions
             .iter()
             .map(|session| {
                 let var = self.assignment.get(session).unwrap();
 
-                // on_day := day_arr[var] == 1
-                let on_day = day_arr.select(var).eq(Int::from_i64(1));
+                let is_on_day = Bool::or(
+                    &day_timeslots
+                        .iter()
+                        .map(|&t| var.eq(t.0))
+                        .collect::<Vec<_>>(),
+                );
 
-                on_day.ite(&Int::from_u64(1), &Int::from_u64(0))
+                is_on_day.ite(&Int::from_u64(1), &Int::from_u64(0))
             })
             .reduce(|acc, x| acc + x)
             .unwrap()
@@ -408,9 +398,14 @@ impl ExamScheduler {
     // I wonder if adding a way to attach context to all potential errors would be best (and what would be the best way of going about that...)
     /// Setup student constraints
     ///
+    /// # Params
+    /// - students: all students which have the same exam sessions
+    /// - sessions: the exam sessions for all the students
+    ///
     /// # Constraints setup
     /// - Students cannot have two exams in the same timeslot
-    pub fn setup_student(&mut self, student: StudentId, sessions: Vec<SessionId>) {
+    /// AI-generated (minimax-m2.5).
+    pub fn setup_students(&mut self, students: Vec<StudentId>, sessions: Vec<SessionId>) {
         let exam_bools = sessions
             .iter()
             .map(|exam| self.assignment.get(exam).unwrap())
@@ -421,8 +416,60 @@ impl ExamScheduler {
         self.tracker.assert_hard(
             &self.optimizer,
             &Int::distinct(&exam_bools),
-            ConstraintError::StudentDistinct { student, sessions },
+            ConstraintError::StudentDistinct { students, sessions },
         );
+    }
+
+    /// Setup student constraints
+    pub fn setup_student(&mut self, student: StudentId, sessions: Vec<SessionId>) {
+        self.setup_students(vec![student], sessions);
+    }
+
+    /// Solve and return a single solution (the first one found).
+    /// This is faster than `solve()` when you only need one schedule.
+    /// AI-generated (minimax-m2.5).
+    pub fn solve_one(self) -> Result<HashMap<SessionId, TimeslotIndex>, SolverError> {
+        println!("Running solver with {} sessions", self.assignment.len());
+        dbg!(self.optimizer.get_assertions());
+        let sat_result = self.optimizer.check(&[]);
+
+        match sat_result {
+            SatResult::Sat => {
+                let model = self.optimizer.get_model().ok_or(SolverError::NoModel)?;
+                dbg!(self
+                    .optimizer
+                    .get_statistics()
+                    .entries()
+                    .collect::<Vec<_>>());
+
+                let mut result = HashMap::new();
+                for (&session, var) in &self.assignment {
+                    if let Some(value) = model.eval(var, true) {
+                        let idx = value.as_i64().ok_or_else(|| SolverError::ModelEvaluation {
+                            session,
+                            details: "solution value is not an integer".to_string(),
+                        })?;
+                        result.insert(session, TimeslotIndex(idx as u64));
+                    } else {
+                        return Err(SolverError::ModelEvaluation {
+                            session,
+                            details: "failed to evaluate variable".to_string(),
+                        });
+                    }
+                }
+                Ok(result)
+            }
+            SatResult::Unsat => Err(SolverError::Infeasible {
+                unsat_core_constraints: self
+                    .tracker
+                    .unsat_core_constraints(&self.optimizer)
+                    .cloned()
+                    .collect(),
+            }),
+            SatResult::Unknown => Err(SolverError::Unknown {
+                reason: self.optimizer.get_reason_unknown(),
+            }),
+        }
     }
 
     pub fn solve(
@@ -938,13 +985,7 @@ mod tests {
                 ..
             } => {
                 assert!(unsat_core_constraints.iter().any(|c| {
-                    matches!(
-                        c,
-                        ConstraintError::StudentDistinct {
-                            student: StudentId(1),
-                            ..
-                        }
-                    )
+                    matches!(c, ConstraintError::StudentDistinct { students: _, .. })
                 }));
             }
             _ => panic!("Expected an infeasibility error"),
