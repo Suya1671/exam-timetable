@@ -10,7 +10,10 @@ pub use entity::id::SessionId;
 use entity::id::StudentId;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::thread::available_parallelism;
+use std::time::Duration;
 use z3::ast::Array;
+use z3::Params;
 use z3::{
     ast::{Ast, Bool, Int},
     Model, Optimize, SatResult, Solvable, Sort,
@@ -62,7 +65,40 @@ impl ExamScheduler {
     ///     - Implicitly satisfied by the fact that we only have 1 variable per session, so it can only be assigned to 1 timeslot
     ///     - This also means each session is scheduled at exactly one timeslot
     pub fn new(session_ids: impl Iterator<Item = SessionId>, n_timeslots: u64) -> Self {
+        Self::new_with_timeout(session_ids, n_timeslots, Duration::from_secs(300))
+    }
+
+    /// Initialises an exam scheduler with a custom timeout.
+    pub fn new_with_timeout(
+        session_ids: impl Iterator<Item = SessionId>,
+        n_timeslots: u64,
+        timeout: Duration,
+    ) -> Self {
+        let mut params = Params::new();
+
+        let avail_parallel = available_parallelism()
+            .ok()
+            .map(|v| v.get())
+            .map(|v| v as u32)
+            .unwrap_or(1);
+        dbg!(avail_parallel);
+
+        params.set_bool("parallel.enable", true);
+        params.set_u32("parallel.threads.max", avail_parallel);
+        params.set_u32("smt.threads", avail_parallel);
+
+        params.set_f64("timeout", timeout.as_millis() as f64);
+        params.set_bool("model.partial", true);
+        params.set_bool("smt.random_seed", true);
+
+        params.set_u32("sat.restart_max_conflicts", 2000);
+        params.set_symbol("sat.solver", "cadical");
+        params.set_bool("sat.euf", true);
+
+        params.set_symbol("opt.priority", "box");
+
         let optimizer = Optimize::new();
+        optimizer.set_params(&params);
 
         let assignment = session_ids
             .map(|session| {
@@ -128,15 +164,19 @@ impl ExamScheduler {
     ) {
         let exam_timeslot = self.assignment.get(&session).unwrap();
 
-        // Constraint: the exam must be scheduled in one of the allowed timeslots
+        // allowed[t] = 1 if allowed, else 0
+        let mut allowed = Array::const_array(&Sort::int(), &Int::from_i64(0));
+
+        for timeslot in &allowed_timeslots {
+            allowed = allowed.store(&Int::from_u64(timeslot.0), &Int::from_i64(1));
+        }
+
+        // Constraint: allowed[exam_timeslot] == 1
+        let is_allowed = allowed.select(exam_timeslot).eq(Int::from_i64(1));
+
         self.tracker.assert_hard(
             &self.optimizer,
-            &Bool::or(
-                &allowed_timeslots
-                    .iter()
-                    .map(|&timeslot| exam_timeslot.eq(timeslot.0))
-                    .collect::<Vec<_>>(),
-            ),
+            &is_allowed,
             ConstraintError::AllowedTimeslots {
                 session,
                 timeslots: allowed_timeslots,
@@ -159,15 +199,19 @@ impl ExamScheduler {
     ) {
         let exam_timeslot = self.assignment.get(&session).unwrap();
 
+        // disallowed[t] = 1 if t is disallowed, else 0
+        let mut disallowed = Array::const_array(&Sort::int(), &Int::from_i64(0));
+
+        for timeslot in &disallowed_timeslots {
+            disallowed = disallowed.store(&Int::from_u64(timeslot.0), &Int::from_i64(1));
+        }
+
+        // Constraint: exam_timeslot should NOT be disallowed
+        let not_disallowed = disallowed.select(exam_timeslot).eq(Int::from_i64(0));
+
         self.tracker.assert_hard(
             &self.optimizer,
-            &Bool::or(
-                &disallowed_timeslots
-                    .iter()
-                    .map(|timeslot| exam_timeslot.eq(timeslot.0))
-                    .collect::<Vec<_>>(),
-            )
-            .not(),
+            &not_disallowed,
             ConstraintError::DisallowedTimeslots {
                 session,
                 timeslots: disallowed_timeslots,
@@ -332,22 +376,27 @@ impl ExamScheduler {
     /// Count the number of exams within in a list is done on a given day
     ///
     /// # Params
-    /// - exams: the exams to count
+    /// - sessions: the exam sessions to count
     /// - day_timeslots: the list of timeslot indices that belong to the same day
     ///
     /// # Returns
-    /// - The number of exams that happen on that day
+    /// - The number of sessions that happen on that day
     fn exams_on_day(&self, sessions: &[SessionId], day_timeslots: &[TimeslotIndex]) -> Int {
+        // day[t] = 1 if timeslot belongs to this day
+        let mut day_arr = Array::const_array(&Sort::int(), &Int::from_i64(0));
+
+        for t in day_timeslots {
+            day_arr = day_arr.store(&Int::from_u64(t.0), &Int::from_i64(1));
+        }
+
         sessions
             .iter()
             .map(|session| {
                 let var = self.assignment.get(session).unwrap();
-                let on_day = Bool::or(
-                    &day_timeslots
-                        .iter()
-                        .map(|&t| var.eq(t.0))
-                        .collect::<Vec<_>>(),
-                );
+
+                // on_day := day_arr[var] == 1
+                let on_day = day_arr.select(var).eq(Int::from_i64(1));
+
                 on_day.ite(&Int::from_u64(1), &Int::from_u64(0))
             })
             .reduce(|acc, x| acc + x)

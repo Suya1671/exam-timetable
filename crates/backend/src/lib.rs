@@ -529,6 +529,7 @@ pub fn solve_with_locked_assignments(
     builder.apply_same_time_constraints_from_db(db)?;
     builder.apply_same_day_constraints_from_db(db)?;
     builder.apply_week_separation_from_db(db)?;
+    builder.apply_minimize_exams_per_day(db)?;
 
     for (session_id, timeslot_id) in locked_assignments {
         mappings.apply_allowed_timeslots(

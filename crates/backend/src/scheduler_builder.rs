@@ -11,7 +11,7 @@ use entity::{
     },
 };
 use itertools::Itertools;
-use solver::ExamScheduler;
+use solver::{ExamScheduler, TimeslotIndex as SolverTimeslotIndex};
 use std::collections::{HashMap, HashSet};
 
 use crate::{solver_adapter::SolverAdapter, SolveError};
@@ -277,6 +277,56 @@ impl<'a> SchedulerBuilder<'a> {
             let (first_session_id, second_session_id) = row?;
             self.scheduler
                 .require_same_time(first_session_id, second_session_id);
+        }
+
+        Ok(())
+    }
+
+    /// Add soft constraint to minimize exams per day for each student.
+    pub fn apply_minimize_exams_per_day(
+        &self,
+        db: &mut SqliteConnection,
+    ) -> Result<(), SolveError> {
+        let day_groups = group_days(db)?;
+        let days: Vec<Vec<SolverTimeslotIndex>> = day_groups
+            .into_values()
+            .map(|timeslots| {
+                timeslots
+                    .iter()
+                    .map(|&id| self.mappings.timeslot_index_for_id(id))
+                    .collect()
+            })
+            .collect();
+
+        if days.is_empty() {
+            return Ok(());
+        }
+
+        let days_ref: Vec<&[SolverTimeslotIndex]> = days.iter().map(|v| v.as_slice()).collect();
+
+        let rows = student::table
+            .inner_join(enrolled_student::table)
+            .inner_join(
+                exam::table.on(exam::subject_id
+                    .eq(enrolled_student::subject_id)
+                    .and(exam::grade.eq(student::grade))),
+            )
+            .inner_join(session::table.on(session::exam_id.eq(exam::id)))
+            .select((student::id, session::id))
+            .load_iter::<(StudentId, SessionId), DefaultLoadingMode>(db)?;
+
+        let mut student_sessions: HashMap<StudentId, Vec<SessionId>> = HashMap::new();
+        for row in rows {
+            let (student_id, session_id) = row?;
+            student_sessions
+                .entry(student_id)
+                .or_default()
+                .push(session_id);
+        }
+
+        if !student_sessions.is_empty() {
+            self.scheduler
+                .minimize_exams_per_day(&student_sessions, &days_ref, |_| 10);
         }
 
         Ok(())
