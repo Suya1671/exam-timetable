@@ -18,12 +18,16 @@ jobs:
         include:
           - platform: ubuntu-latest
             args: '--features gh-release'
+            artifact_path: target/release/bundle/**
           - platform: macos-latest
             args: '--target aarch64-apple-darwin --features gh-release'
+            artifact_path: target/aarch64-apple-darwin/release/bundle/**
           - platform: macos-latest
             args: '--target x86_64-apple-darwin --features gh-release'
+            artifact_path: target/x86_64-apple-darwin/release/bundle/**
           - platform: windows-latest
             args: '--features gh-release'
+            artifact_path: target/release/bundle/**
 
     runs-on: ${{ matrix.platform }}
 
@@ -89,5 +93,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: exam-scheduler-${{ matrix.platform }}-${{ matrix.targets || 'default' }}
-          path: target/release/bundle/**
+          path: ${{ matrix.artifact_path || 'target/release/bundle/**' }}
           retention-days: 5
