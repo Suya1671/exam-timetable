@@ -18,6 +18,13 @@ This repository contains a Rust workspace for building an exam scheduling system
 Timeslots are ordered by `(date, slot)` when building any scheduling logic. Do not assume
 `TimeslotId` is in chronological order.
 
+## Dependencies
+- Tauri dependencies
+- SQlite
+- Z3
+  - Unless you're using the `gh-release` or `vendored` feature flags
+  - `gh-release` and the default featureset requires the end-user to have Z3 installed as well. `vendored` will statically link z3
+
 ## Quick start
 
 From the repository root:

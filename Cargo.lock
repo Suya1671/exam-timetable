@@ -552,6 +552,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cmake"
+version = "0.1.58"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0f78a02292a74a88ac736019ab962ece0bc380e3f977bf72e376c5d78ff0678"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "combine"
 version = "4.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6182,6 +6191,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "z3-src"
+version = "416.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ba596e87825314ea3dc13d402568c9dc92da162ca4e3e4de8d522fe3db2b142"
+dependencies = [
+ "cmake",
+]
+
+[[package]]
 name = "z3-sys"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6190,6 +6208,7 @@ dependencies = [
  "pkg-config",
  "reqwest 0.12.28",
  "serde_json",
+ "z3-src",
  "zip",
 ]
 

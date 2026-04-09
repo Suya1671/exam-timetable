@@ -30,7 +30,7 @@ jobs:
             artifact_path: target/x86_64-apple-darwin/release/bundle/**
           - platform: windows-latest
             build_name: windows
-            args: '--features gh-release'
+            args: '--features vendored'
             artifact_path: target/release/bundle/**
 
     runs-on: ${{ matrix.platform }}
