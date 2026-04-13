@@ -25,6 +25,8 @@ use z3::{
     Copy,
     PartialEq,
     Eq,
+    PartialOrd,
+    Ord,
     Hash,
     serde::Serialize,
     serde::Deserialize,
@@ -234,7 +236,6 @@ impl ExamScheduler {
     }
 
     /// Require two sessions to run in the same timeslot.
-    /// AI-generated (GPT-5.3-codex).
     pub fn require_same_time(&mut self, session1: SessionId, session2: SessionId) {
         let timeslot1 = self.assignment.get(&session1).unwrap();
         let timeslot2 = self.assignment.get(&session2).unwrap();
@@ -246,6 +247,7 @@ impl ExamScheduler {
         );
     }
 
+    /// Require two sessions to run in different timeslots.
     pub fn require_different_time(&mut self, session1: SessionId, session2: SessionId) {
         let timeslot1 = self.assignment.get(&session1).unwrap();
         let timeslot2 = self.assignment.get(&session2).unwrap();
@@ -254,6 +256,21 @@ impl ExamScheduler {
             &self.optimizer,
             &timeslot1.ne(timeslot2),
             ConstraintError::DifferentTime { session1, session2 },
+        );
+    }
+
+    /// Require the first session to run before the second session.
+    pub fn require_before(&mut self, first_session_id: SessionId, second_session_id: SessionId) {
+        let first = self.assignment.get(&first_session_id).unwrap();
+        let second = self.assignment.get(&second_session_id).unwrap();
+
+        self.tracker.assert_hard(
+            &self.optimizer,
+            &first.lt(second),
+            ConstraintError::Before {
+                first_session_id,
+                second_session_id,
+            },
         );
     }
 
@@ -804,16 +821,12 @@ mod tests {
 
         scheduler.require_same_time(SessionId(1), SessionId(2));
 
-        let solution = scheduler
-            .solve()
-            .expect("Expected a valid solution")
-            .next()
-            .expect("solution to exist");
-
-        assert_eq!(
-            solved_timeslot(&solution, SessionId(1)),
-            solved_timeslot(&solution, SessionId(2))
-        );
+        for solution in scheduler.solve().expect("Expected a valid solution") {
+            assert_eq!(
+                solved_timeslot(&solution, SessionId(1)),
+                solved_timeslot(&solution, SessionId(2))
+            );
+        }
     }
 
     #[test]
@@ -822,16 +835,25 @@ mod tests {
         let mut scheduler = ExamScheduler::new(exam_ids.iter().copied(), 3);
         scheduler.require_different_time(SessionId(1), SessionId(2));
 
-        let solution = scheduler
-            .solve()
-            .expect("Expected a valid solution")
-            .next()
-            .expect("solution to exist");
+        for solution in scheduler.solve().expect("Expected a valid solution") {
+            assert_ne!(
+                solved_timeslot(&solution, SessionId(1)),
+                solved_timeslot(&solution, SessionId(2))
+            );
+        }
+    }
 
-        assert_ne!(
-            solved_timeslot(&solution, SessionId(1)),
-            solved_timeslot(&solution, SessionId(2))
-        );
+    #[test]
+    fn require_before_assigns_first_session_before_second_session() {
+        let exam_ids = [SessionId(1), SessionId(2)];
+        let mut scheduler = ExamScheduler::new(exam_ids.iter().copied(), 3);
+        scheduler.require_before(SessionId(1), SessionId(2));
+
+        for solution in scheduler.solve().expect("Expected a valid solution") {
+            assert!(
+                solved_timeslot(&solution, SessionId(1)) < solved_timeslot(&solution, SessionId(2))
+            );
+        }
     }
 
     #[test]

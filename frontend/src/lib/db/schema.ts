@@ -128,7 +128,8 @@ export const examConstraint = sqliteTable(
 				'same_week',
 				'different_week',
 				'same_time',
-				'different_time'
+        'different_time',
+				'before'
 			]
 		}).notNull()
 	},

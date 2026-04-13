@@ -17,6 +17,7 @@ pub enum ExamConstraintType {
     DifferentWeek,
     DifferentTime,
     SameTime,
+    Before,
 }
 
 impl<DB> ToSql<Text, DB> for ExamConstraintType
@@ -32,6 +33,7 @@ where
             ExamConstraintType::DifferentWeek => "different_week",
             ExamConstraintType::SameTime => "same_time",
             ExamConstraintType::DifferentTime => "different_time",
+            ExamConstraintType::Before => "before",
         };
 
         <str as ToSql<Text, DB>>::to_sql(value, out)
@@ -52,6 +54,7 @@ where
             "different_week" => Ok(ExamConstraintType::DifferentWeek),
             "same_time" => Ok(ExamConstraintType::SameTime),
             "different_time" => Ok(ExamConstraintType::DifferentTime),
+            "before" => Ok(ExamConstraintType::Before),
             _ => Err(format!("invalid exam constraint type: {}", value).into()),
         }
     }

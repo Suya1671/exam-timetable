@@ -81,6 +81,13 @@ pub enum ConstraintError {
         /// The second session in the different-time constraint.
         session2: SessionId,
     },
+    /// The first session was constrained to run before the second session.
+    Before {
+        /// The first session in the before constraint.
+        first_session_id: SessionId,
+        /// The second session in the before constraint.
+        second_session_id: SessionId,
+    },
     /// A group of exams was constrained to be scheduled in separate timeslots, but were assigned to the same one.
     SeparateExamGroups {
         session1: SessionId,

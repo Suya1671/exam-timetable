@@ -265,6 +265,10 @@ impl<'a> SchedulerBuilder<'a> {
                         week_map.clone(),
                     );
                 }
+                ExamConstraintType::Before => {
+                    self.scheduler
+                        .require_before(first_session_id, second_session_id);
+                }
             }
         }
 

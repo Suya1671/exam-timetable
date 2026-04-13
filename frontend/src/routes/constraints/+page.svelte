@@ -15,7 +15,8 @@
 		same_week: 'Same Week',
 		different_time: 'Different Time',
 		different_day: 'Different Day',
-		different_week: 'Different Week'
+		different_week: 'Different Week',
+		before: 'Before'
 	};
 
 	const CONSTRAINT_TYPE_OPTIONS: { value: ExamConstraintType; text: string }[] = Object.entries(
@@ -28,7 +29,8 @@
 		same_week: 'These two exams must be scheduled in the same calendar week.',
 		different_time: 'These two exams must happen at different times.',
 		different_day: 'These two exams must happen on different dates.',
-		different_week: 'These two exams must be scheduled in different calendar weeks.'
+		different_week: 'These two exams must be scheduled in different calendar weeks.',
+		before: 'The first exam must be scheduled before the second exam.',
 	};
 
 	const firstExam = alias(exam, 'firstExam');
