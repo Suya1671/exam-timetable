@@ -1,5 +1,6 @@
 pub mod enrolled_students;
-pub mod exam_constraints;
+pub mod exam_order_constraints;
+pub mod exam_time_constraints;
 pub mod exam_timeslot_restrictions;
 pub mod exams;
 pub mod id;

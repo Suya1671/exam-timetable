@@ -106,8 +106,8 @@ export const exam = sqliteTable(
 	]
 );
 
-export const examConstraint = sqliteTable(
-	'exam_constraint',
+export const examTimeConstraint = sqliteTable(
+	'exam_time_constraint',
 	{
 		exam1Id: integer('exam1_id')
 			.notNull()
@@ -128,20 +128,43 @@ export const examConstraint = sqliteTable(
 				'same_week',
 				'different_week',
 				'same_time',
-        'different_time',
-				'before'
+				'different_time'
 			]
 		}).notNull()
 	},
 	(table) => [
 		primaryKey({
-			columns: [table.exam1Id, table.exam2Id, table.constraintType],
-			name: 'exam_constraint_pk'
+			columns: [table.exam1Id, table.exam2Id],
+			name: 'exam_time_constraint_pk'
 		})
 	]
 );
 
-export type ExamConstraintType = typeof examConstraint.$inferSelect.constraintType;
+export type ExamConstraintType = typeof examTimeConstraint.$inferSelect.constraintType;
+
+export const examOrderConstraint = sqliteTable(
+	'exam_order_constraint',
+	{
+		exam1Id: integer('exam1_id')
+			.notNull()
+			.references(() => exam.id, {
+				onDelete: 'cascade',
+				onUpdate: 'cascade'
+			}),
+		exam2Id: integer('exam2_id')
+			.notNull()
+			.references(() => exam.id, {
+				onDelete: 'cascade',
+				onUpdate: 'cascade'
+			})
+	},
+	(table) => [
+		primaryKey({
+			columns: [table.exam1Id, table.exam2Id],
+			name: 'exam_order_constraint_pk'
+		})
+	]
+);
 
 export const examTimeslotRestriction = sqliteTable(
 	'exam_timeslot_restriction',

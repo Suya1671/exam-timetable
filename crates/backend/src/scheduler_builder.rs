@@ -3,12 +3,12 @@ use diesel::{
     NullableExpressionMethods, QueryDsl, RunQueryDsl, SqliteConnection,
 };
 use entity::{
-    exam_constraints::ExamConstraintType,
+    exam_time_constraints::ExamConstraintType,
     exams::TimeslotRestrictionMode,
     id::{SessionId, StudentId, SubjectId, TimeslotId},
     schema::{
-        enrolled_student, exam, exam_constraint, exam_timeslot_restriction, session, student,
-        timeslot,
+        enrolled_student, exam, exam_order_constraint, exam_time_constraint,
+        exam_timeslot_restriction, session, student, timeslot,
     },
 };
 use itertools::Itertools;
@@ -208,18 +208,18 @@ impl<'a> SchedulerBuilder<'a> {
         let (second_id, second_exam_id, second_sequence) =
             second_session.fields((session::id, session::exam_id, session::sequence));
 
-        let constraint_rows = exam_constraint::table
+        let constraint_rows = exam_time_constraint::table
             .inner_join(
                 first_session.on(first_exam_id
-                    .eq(exam_constraint::exam1_id)
+                    .eq(exam_time_constraint::exam1_id)
                     .and(first_sequence.eq(0))),
             )
             .inner_join(
                 second_session.on(second_exam_id
-                    .eq(exam_constraint::exam2_id)
+                    .eq(exam_time_constraint::exam2_id)
                     .and(second_sequence.eq(0))),
             )
-            .select((first_id, second_id, exam_constraint::constraint_type))
+            .select((first_id, second_id, exam_time_constraint::constraint_type))
             .load_iter::<(SessionId, SessionId, ExamConstraintType), _>(db)?;
 
         for row in constraint_rows {
@@ -265,11 +265,28 @@ impl<'a> SchedulerBuilder<'a> {
                         week_map.clone(),
                     );
                 }
-                ExamConstraintType::Before => {
-                    self.scheduler
-                        .require_before(first_session_id, second_session_id);
-                }
             }
+        }
+
+        // Load and apply ordering constraints (before)
+        let order_constraint_rows = exam_order_constraint::table
+            .inner_join(
+                first_session.on(first_exam_id
+                    .eq(exam_order_constraint::exam1_id)
+                    .and(first_sequence.eq(0))),
+            )
+            .inner_join(
+                second_session.on(second_exam_id
+                    .eq(exam_order_constraint::exam2_id)
+                    .and(second_sequence.eq(0))),
+            )
+            .select((first_id, second_id))
+            .load_iter::<(SessionId, SessionId), _>(db)?;
+
+        for row in order_constraint_rows {
+            let (first_session_id, second_session_id) = row?;
+            self.scheduler
+                .require_before(first_session_id, second_session_id);
         }
 
         Ok(())

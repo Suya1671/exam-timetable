@@ -1,5 +1,5 @@
 use crate::id::ExamId;
-use crate::schema::exam_constraint;
+use crate::schema::exam_time_constraint;
 use diesel::backend::Backend;
 use diesel::deserialize::FromSql;
 use diesel::serialize::Output;
@@ -17,7 +17,6 @@ pub enum ExamConstraintType {
     DifferentWeek,
     DifferentTime,
     SameTime,
-    Before,
 }
 
 impl<DB> ToSql<Text, DB> for ExamConstraintType
@@ -33,7 +32,6 @@ where
             ExamConstraintType::DifferentWeek => "different_week",
             ExamConstraintType::SameTime => "same_time",
             ExamConstraintType::DifferentTime => "different_time",
-            ExamConstraintType::Before => "before",
         };
 
         <str as ToSql<Text, DB>>::to_sql(value, out)
@@ -54,7 +52,6 @@ where
             "different_week" => Ok(ExamConstraintType::DifferentWeek),
             "same_time" => Ok(ExamConstraintType::SameTime),
             "different_time" => Ok(ExamConstraintType::DifferentTime),
-            "before" => Ok(ExamConstraintType::Before),
             _ => Err(format!("invalid exam constraint type: {}", value).into()),
         }
     }
@@ -63,10 +60,10 @@ where
 #[derive(
     Debug, Clone, PartialEq, Eq, diesel::Queryable, diesel::Selectable, diesel::Identifiable,
 )]
-#[diesel(table_name = exam_constraint)]
-#[diesel(primary_key(exam1_id, exam2_id, constraint_type))]
+#[diesel(table_name = exam_time_constraint)]
+#[diesel(primary_key(exam1_id, exam2_id))]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
-pub struct ExamConstraint {
+pub struct ExamTimeConstraint {
     pub exam1_id: ExamId,
     pub exam2_id: ExamId,
     pub constraint_type: ExamConstraintType,

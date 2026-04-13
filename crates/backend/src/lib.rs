@@ -7,10 +7,10 @@ use std::collections::{HashMap, HashSet};
 
 use entity::id::{ExamId, SessionId, StudentId, SubjectId, TimeslotId};
 use entity::schema::{
-    enrolled_student, exam, exam_constraint, exam_timeslot_restriction, session, student, subject,
-    timeslot,
+    enrolled_student, exam, exam_time_constraint, exam_timeslot_restriction, session, student,
+    subject, timeslot,
 };
-use entity::{exam_constraints::ExamConstraintType, exams::TimeslotRestrictionMode};
+use entity::{exam_time_constraints::ExamConstraintType, exams::TimeslotRestrictionMode};
 use solver::{ExamScheduler, SolverError};
 mod scheduler_builder;
 mod solver_adapter;
@@ -205,9 +205,12 @@ impl PrecheckContext {
 
     // TODO: generalise this to checking all types of pairs
     fn check_same_time_pairs(&self, db: &mut SqliteConnection) -> Result<(), SolveError> {
-        let pairs = exam_constraint::table
-            .select((exam_constraint::exam1_id, exam_constraint::exam2_id))
-            .filter(exam_constraint::constraint_type.eq(ExamConstraintType::SameTime))
+        let pairs = exam_time_constraint::table
+            .select((
+                exam_time_constraint::exam1_id,
+                exam_time_constraint::exam2_id,
+            ))
+            .filter(exam_time_constraint::constraint_type.eq(ExamConstraintType::SameTime))
             .load::<(ExamId, ExamId)>(db)?;
 
         for (exam1_id, exam2_id) in pairs {
@@ -242,9 +245,12 @@ impl PrecheckContext {
     }
 
     fn check_same_day_pairs(&self, db: &mut SqliteConnection) -> Result<(), SolveError> {
-        let pairs = exam_constraint::table
-            .select((exam_constraint::exam1_id, exam_constraint::exam2_id))
-            .filter(exam_constraint::constraint_type.eq(ExamConstraintType::SameDay))
+        let pairs = exam_time_constraint::table
+            .select((
+                exam_time_constraint::exam1_id,
+                exam_time_constraint::exam2_id,
+            ))
+            .filter(exam_time_constraint::constraint_type.eq(ExamConstraintType::SameDay))
             .load::<(ExamId, ExamId)>(db)?;
 
         for (first_exam_id, second_exam_id) in pairs {
@@ -331,17 +337,23 @@ Checked {} days but found no valid morning+afternoon combination.",
         &self,
         db: &mut SqliteConnection,
     ) -> Result<(), SolveError> {
-        let same_time_pairs = exam_constraint::table
-            .select((exam_constraint::exam1_id, exam_constraint::exam2_id))
-            .filter(exam_constraint::constraint_type.eq(ExamConstraintType::SameTime))
+        let same_time_pairs = exam_time_constraint::table
+            .select((
+                exam_time_constraint::exam1_id,
+                exam_time_constraint::exam2_id,
+            ))
+            .filter(exam_time_constraint::constraint_type.eq(ExamConstraintType::SameTime))
             .load::<(ExamId, ExamId)>(db)?
             .into_iter()
             .map(|(e1, e2)| if e1 <= e2 { (e1, e2) } else { (e2, e1) })
             .collect::<HashSet<_>>();
 
-        let different_week_pairs = exam_constraint::table
-            .select((exam_constraint::exam1_id, exam_constraint::exam2_id))
-            .filter(exam_constraint::constraint_type.eq(ExamConstraintType::DifferentWeek))
+        let different_week_pairs = exam_time_constraint::table
+            .select((
+                exam_time_constraint::exam1_id,
+                exam_time_constraint::exam2_id,
+            ))
+            .filter(exam_time_constraint::constraint_type.eq(ExamConstraintType::DifferentWeek))
             .load::<(ExamId, ExamId)>(db)?
             .into_iter()
             .map(|(e1, e2)| if e1 <= e2 { (e1, e2) } else { (e2, e1) })

@@ -21,7 +21,14 @@ diesel::table! {
 }
 
 diesel::table! {
-    exam_constraint (exam1_id, exam2_id) {
+    exam_order_constraint (exam1_id, exam2_id) {
+        exam1_id -> Integer,
+        exam2_id -> Integer,
+    }
+}
+
+diesel::table! {
+    exam_time_constraint (exam1_id, exam2_id) {
         exam1_id -> Integer,
         exam2_id -> Integer,
         constraint_type -> Text,
@@ -116,7 +123,8 @@ diesel::joinable!(timetable_slots -> timetables (timetable_id));
 diesel::allow_tables_to_appear_in_same_query!(
     enrolled_student,
     exam,
-    exam_constraint,
+    exam_order_constraint,
+    exam_time_constraint,
     exam_timeslot_restriction,
     session,
     session_time_config,

@@ -56,14 +56,26 @@ export const relations = defineRelations(schema, (r) => ({
 			optional: false
 		})
 	},
-	examConstraint: {
+	examTimeConstraint: {
 		firstExam: r.one.exam({
-			from: r.examConstraint.exam1Id,
+			from: r.examTimeConstraint.exam1Id,
 			to: r.exam.id,
 			optional: false
 		}),
 		secondExam: r.one.exam({
-			from: r.examConstraint.exam2Id,
+			from: r.examTimeConstraint.exam2Id,
+			to: r.exam.id,
+			optional: false
+		})
+	},
+	examOrderConstraint: {
+		firstExam: r.one.exam({
+			from: r.examOrderConstraint.exam1Id,
+			to: r.exam.id,
+			optional: false
+		}),
+		secondExam: r.one.exam({
+			from: r.examOrderConstraint.exam2Id,
 			to: r.exam.id,
 			optional: false
 		})
