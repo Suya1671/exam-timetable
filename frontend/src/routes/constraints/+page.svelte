@@ -234,14 +234,7 @@
 						validators={{
 							onChange: pipe(
 								picklist(
-									[
-										'same_day',
-										'different_day',
-										'same_week',
-										'different_week',
-										'same_time',
-										'different_time'
-									] satisfies ExamConstraintType[],
+									examConstraint.constraintType.enumValues,
 									'Pick a constraint type.'
 								)
 							)
