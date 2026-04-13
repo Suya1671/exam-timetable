@@ -5,12 +5,12 @@ use diesel::{
 };
 use std::collections::{HashMap, HashSet};
 
-use entity::exams::TimeslotRestrictionMode;
 use entity::id::{ExamId, SessionId, StudentId, SubjectId, TimeslotId};
 use entity::schema::{
-    different_week_exams, enrolled_student, exam, exam_timeslot_restriction, same_day_exam,
-    same_time_exam, session, student, subject, timeslot,
+    enrolled_student, exam, exam_constraint, exam_timeslot_restriction, session, student, subject,
+    timeslot,
 };
+use entity::{exam_constraints::ExamConstraintType, exams::TimeslotRestrictionMode};
 use solver::{ExamScheduler, SolverError};
 mod scheduler_builder;
 mod solver_adapter;
@@ -203,9 +203,11 @@ impl PrecheckContext {
         Ok(())
     }
 
+    // TODO: generalise this to checking all types of pairs
     fn check_same_time_pairs(&self, db: &mut SqliteConnection) -> Result<(), SolveError> {
-        let pairs = same_time_exam::table
-            .select((same_time_exam::exam1_id, same_time_exam::exam2_id))
+        let pairs = exam_constraint::table
+            .select((exam_constraint::exam1_id, exam_constraint::exam2_id))
+            .filter(exam_constraint::constraint_type.eq(ExamConstraintType::SameTime))
             .load::<(ExamId, ExamId)>(db)?;
 
         for (exam1_id, exam2_id) in pairs {
@@ -240,11 +242,9 @@ impl PrecheckContext {
     }
 
     fn check_same_day_pairs(&self, db: &mut SqliteConnection) -> Result<(), SolveError> {
-        let pairs = same_day_exam::table
-            .select((
-                same_day_exam::first_slot_exam_id,
-                same_day_exam::second_slot_exam_id,
-            ))
+        let pairs = exam_constraint::table
+            .select((exam_constraint::exam1_id, exam_constraint::exam2_id))
+            .filter(exam_constraint::constraint_type.eq(ExamConstraintType::SameDay))
             .load::<(ExamId, ExamId)>(db)?;
 
         for (first_exam_id, second_exam_id) in pairs {
@@ -331,18 +331,17 @@ Checked {} days but found no valid morning+afternoon combination.",
         &self,
         db: &mut SqliteConnection,
     ) -> Result<(), SolveError> {
-        let same_time_pairs = same_time_exam::table
-            .select((same_time_exam::exam1_id, same_time_exam::exam2_id))
+        let same_time_pairs = exam_constraint::table
+            .select((exam_constraint::exam1_id, exam_constraint::exam2_id))
+            .filter(exam_constraint::constraint_type.eq(ExamConstraintType::SameTime))
             .load::<(ExamId, ExamId)>(db)?
             .into_iter()
             .map(|(e1, e2)| if e1 <= e2 { (e1, e2) } else { (e2, e1) })
             .collect::<HashSet<_>>();
 
-        let different_week_pairs = different_week_exams::table
-            .select((
-                different_week_exams::exam1_id,
-                different_week_exams::exam2_id,
-            ))
+        let different_week_pairs = exam_constraint::table
+            .select((exam_constraint::exam1_id, exam_constraint::exam2_id))
+            .filter(exam_constraint::constraint_type.eq(ExamConstraintType::DifferentWeek))
             .load::<(ExamId, ExamId)>(db)?
             .into_iter()
             .map(|(e1, e2)| if e1 <= e2 { (e1, e2) } else { (e2, e1) })
@@ -525,9 +524,7 @@ pub fn solve_one(
     builder.apply_student_clashes_from_db(db)?;
     builder.apply_timeslot_restrictions_for_exams_from_db(db)?;
     builder.apply_subject_exam_distance_from_db(db)?;
-    builder.apply_same_time_constraints_from_db(db)?;
-    builder.apply_same_day_constraints_from_db(db)?;
-    builder.apply_week_separation_from_db(db)?;
+    builder.apply_exam_constraints_from_db(db)?;
     builder.apply_minimize_exams_per_day(db)?;
 
     for (session_id, timeslot_id) in locked_assignments {
@@ -563,9 +560,7 @@ pub fn solve_with_locked_assignments(
     builder.apply_student_clashes_from_db(db)?;
     builder.apply_timeslot_restrictions_for_exams_from_db(db)?;
     builder.apply_subject_exam_distance_from_db(db)?;
-    builder.apply_same_time_constraints_from_db(db)?;
-    builder.apply_same_day_constraints_from_db(db)?;
-    builder.apply_week_separation_from_db(db)?;
+    builder.apply_exam_constraints_from_db(db)?;
     builder.apply_minimize_exams_per_day(db)?;
 
     for (session_id, timeslot_id) in locked_assignments {

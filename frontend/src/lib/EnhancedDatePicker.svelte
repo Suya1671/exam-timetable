@@ -41,6 +41,7 @@
 	});
 
 	let picker = $state(false);
+
 	const clickOutside = (container: Node) => {
 		const handleClick = (event: Event) => {
 			if (!container.contains(event.target as Node)) {
@@ -54,7 +55,8 @@
 			}
 		};
 	};
-	const enterExit = (): TransitionConfig => {
+
+	const enterExit = (_node: Node): TransitionConfig => {
 		return {
 			duration: 400,
 			easing: easeEmphasized,
@@ -263,7 +265,8 @@ opacity: ${Math.min(t * 3, 1)};`
 		border-bottom-color: --translucent(var(--m3c-on-surface), 0.38);
 	}
 
-	input:disabled, button:disabled {
+	input:disabled,
+	button:disabled {
 		color: --translucent(var(--m3c-on-surface), 0.38);
 		cursor: auto;
 	}

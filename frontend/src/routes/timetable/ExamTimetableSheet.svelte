@@ -100,7 +100,8 @@
 			</thead>
 			<tbody>
 				{#each days as day, dayIndex (`${day.weekKey}-${day.dateLabel}`)}
-					{@const isWeekStart = dayIndex === 0 || day.weekKey !== days[dayIndex - 1].weekKey}
+					<!-- The index will always be within bounds -->
+					{@const isWeekStart = dayIndex === 0 || day.weekKey !== days[dayIndex - 1]!.weekKey}
 					{#if isWeekStart}
 						<tr class="week-row">
 							<th colspan={grades.length + 2}>Week {day.weekKey}</th>
@@ -115,7 +116,8 @@
 							{/if}
 							<th scope="row" class="session-label">{session.label}</th>
 							{#each session.examsByGrade as examEntries, gradeIndex (gradeIndex)}
-								{@const grade = grades[gradeIndex]}
+								<!-- Always in bounds -->
+								{@const grade = grades[gradeIndex]!}
 								{@const cellKey = makeCellKey(session.timeslotId, grade.value)}
 								<td
 									use:droppable={{

@@ -74,6 +74,13 @@ pub enum ConstraintError {
         /// The second session in the same-time constraint.
         session2: SessionId,
     },
+    /// Two exams were constrained to be assigned in different timeslots.
+    DifferentTime {
+        /// The first session in the different-time constraint.
+        session1: SessionId,
+        /// The second session in the different-time constraint.
+        session2: SessionId,
+    },
     /// A group of exams was constrained to be scheduled in separate timeslots, but were assigned to the same one.
     SeparateExamGroups {
         session1: SessionId,

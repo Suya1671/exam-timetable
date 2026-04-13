@@ -91,28 +91,34 @@ impl SolverAdapter {
         SolverTimeslotIndex(*pos)
     }
 
-    /// Build all same-day solver timeslot pairs.
-    /// AI-generated (GPT-5.2-codex).
-    pub fn day_pairs<I>(&self, day_groups: I) -> Vec<(SolverTimeslotIndex, SolverTimeslotIndex)>
+    /// Build all combination solver timeslot pairs.
+    ///
+    /// This can be used to build pairs of timeslots from different days.
+    ///
+    /// # Params
+    /// - groups: an iterator of groups of timeslot ids, where each group represents a combination of timeslots from the same time period (e.g. day or week).
+    pub fn combination_pairs<I>(&self, groups: I) -> Vec<(SolverTimeslotIndex, SolverTimeslotIndex)>
     where
         I: IntoIterator<Item = Vec<TimeslotId>>,
     {
-        day_groups
+        groups
             .into_iter()
             .map(|timeslots| self.map_timeslots_to_indices(timeslots.iter().copied()))
             .flat_map(|timeslots| timeslots.into_iter().tuple_combinations())
             .collect()
     }
 
-    /// Map timeslot week groupings to solver indices.
-    /// AI-generated (GPT-5.2-codex).
-    pub fn week_map<I>(&self, entries: I) -> HashMap<SolverTimeslotIndex, u64>
+    /// Map timeslot groupings to solver indices.
+    ///
+    /// # Params
+    /// - entries: an iterator of (timeslot_id, group) pairs, where each group represents a combination of timeslots from the same time period (e.g. day or week).
+    pub fn group_map<I>(&self, entries: I) -> HashMap<SolverTimeslotIndex, u64>
     where
-        I: IntoIterator<Item = (TimeslotId, u8)>,
+        I: IntoIterator<Item = (TimeslotId, u64)>,
     {
         entries
             .into_iter()
-            .map(|(timeslot_id, week)| (self.timeslot_index_for_id(timeslot_id), week.into()))
+            .map(|(timeslot_id, group)| (self.timeslot_index_for_id(timeslot_id), group))
             .collect()
     }
 
@@ -241,7 +247,7 @@ mod tests {
             vec![TimeslotId(10), TimeslotId(12), TimeslotId(11)],
             vec![TimeslotId(20)],
         ];
-        let pairs = mappings.day_pairs(day_groups);
+        let pairs = mappings.combination_pairs(day_groups);
 
         assert_eq!(
             pairs,
@@ -267,7 +273,7 @@ mod tests {
         };
 
         let week_entries = vec![(TimeslotId(3), 5), (TimeslotId(1), 4)];
-        let week_map = mappings.week_map(week_entries);
+        let week_map = mappings.group_map(week_entries);
 
         assert_eq!(week_map.get(&SolverTimeslotIndex(2)), Some(&5));
         assert_eq!(week_map.get(&SolverTimeslotIndex(0)), Some(&4));

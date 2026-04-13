@@ -1,10 +1,8 @@
-pub mod different_week_exams;
 pub mod enrolled_students;
+pub mod exam_constraints;
 pub mod exam_timeslot_restrictions;
 pub mod exams;
 pub mod id;
-pub mod same_day_exams;
-pub mod same_time_exams;
 pub mod schema;
 pub mod sessions;
 pub mod students;

@@ -1,13 +1,6 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    different_week_exams (exam1_id, exam2_id) {
-        exam1_id -> Integer,
-        exam2_id -> Integer,
-    }
-}
-
-diesel::table! {
     enrolled_student (student_id, subject_id) {
         student_id -> Integer,
         subject_id -> Integer,
@@ -28,23 +21,17 @@ diesel::table! {
 }
 
 diesel::table! {
+    exam_constraint (exam1_id, exam2_id) {
+        exam1_id -> Integer,
+        exam2_id -> Integer,
+        constraint_type -> Text,
+    }
+}
+
+diesel::table! {
     exam_timeslot_restriction (exam_id, timeslot_id) {
         exam_id -> Integer,
         timeslot_id -> Integer,
-    }
-}
-
-diesel::table! {
-    same_day_exam (first_slot_exam_id, second_slot_exam_id) {
-        first_slot_exam_id -> Integer,
-        second_slot_exam_id -> Integer,
-    }
-}
-
-diesel::table! {
-    same_time_exam (exam1_id, exam2_id) {
-        exam1_id -> Integer,
-        exam2_id -> Integer,
     }
 }
 
@@ -91,7 +78,6 @@ diesel::table! {
         id -> Integer,
         date -> Date,
         slot -> Integer,
-        start_time -> Time,
     }
 }
 
@@ -128,12 +114,10 @@ diesel::joinable!(timetable_slots -> timeslot (timeslot_id));
 diesel::joinable!(timetable_slots -> timetables (timetable_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    different_week_exams,
     enrolled_student,
     exam,
+    exam_constraint,
     exam_timeslot_restriction,
-    same_day_exam,
-    same_time_exam,
     session,
     session_time_config,
     student,

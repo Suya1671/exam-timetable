@@ -92,13 +92,15 @@ export const db = drizzle(
 				method
 			);
 		} catch (error) {
-			throw new Error(`SQL RPC failed: ${formatSqlError(error)}`);
+			throw new Error(`SQL RPC failed: ${formatSqlError(error)}`, {
+				cause: error
+			});
 		}
 
 		const normalizedRows = normalizeRows(result.rows);
 
 		if (method === 'get') {
-			return { rows: normalizedRows[0] ?? undefined };
+			return { rows: normalizedRows[0] ?? [] };
 		}
 
 		return { rows: normalizedRows };
@@ -114,7 +116,9 @@ export const db = drizzle(
 				}))
 			);
 		} catch (error) {
-			throw new Error(`SQL batch RPC failed: ${formatSqlError(error)}`);
+			throw new Error(`SQL batch RPC failed: ${formatSqlError(error)}`, {
+				cause: error
+			});
 		}
 
 		return result.map((queryResult, index) => {
@@ -122,7 +126,7 @@ export const db = drizzle(
 			const normalizedRows = normalizeRows(queryResult.rows);
 
 			if (method === 'get') {
-				return { rows: normalizedRows[0] ?? undefined };
+				return { rows: normalizedRows[0] ?? [] };
 			}
 
 			return { rows: normalizedRows };

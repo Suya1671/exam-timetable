@@ -3,11 +3,12 @@ use diesel::{
     NullableExpressionMethods, QueryDsl, RunQueryDsl, SqliteConnection,
 };
 use entity::{
+    exam_constraints::ExamConstraintType,
     exams::TimeslotRestrictionMode,
     id::{SessionId, StudentId, SubjectId, TimeslotId},
     schema::{
-        different_week_exams, enrolled_student, exam, exam_timeslot_restriction, same_day_exam,
-        same_time_exam, session, student, timeslot,
+        enrolled_student, exam, exam_constraint, exam_timeslot_restriction, session, student,
+        timeslot,
     },
 };
 use itertools::Itertools;
@@ -166,13 +167,17 @@ impl<'a> SchedulerBuilder<'a> {
         Ok(())
     }
 
-    /// Load and apply same-day constraints between exam pairs.
-    pub fn apply_same_day_constraints_from_db(
+    /// Load and apply constraints between exam pairs.
+    pub fn apply_exam_constraints_from_db(
         &mut self,
         db: &mut SqliteConnection,
     ) -> Result<(), SolveError> {
+        // This can probably be simplified down into 1 sql call, but I am too lazy to do that refactor rn
         let day_groups = group_days(db)?.into_values();
-        let days = self.mappings.day_pairs(day_groups);
+        let days = self.mappings.combination_pairs(day_groups);
+
+        let week_groups = group_weeks(db)?.into_values();
+        let weeks = self.mappings.combination_pairs(week_groups);
 
         let morning_timeslots: Vec<_> = timeslot::table
             .filter(timeslot::slot.eq(0))
@@ -181,53 +186,19 @@ impl<'a> SchedulerBuilder<'a> {
             .map_ok(|slot_id| self.mappings.timeslot_index_for_id(slot_id))
             .try_collect()?;
 
-        let (first_session, second_session) =
-            alias!(session as first_session, session as second_session);
-
-        let (first_id, first_exam_id, first_sequence) =
-            first_session.fields((session::id, session::exam_id, session::sequence));
-        let (second_id, second_exam_id, second_sequence) =
-            second_session.fields((session::id, session::exam_id, session::sequence));
-
-        let same_day_rows = same_day_exam::table
-            .inner_join(
-                first_session.on(first_exam_id
-                    .eq(same_day_exam::first_slot_exam_id)
-                    .and(first_sequence.eq(0))),
-            )
-            .inner_join(
-                second_session.on(second_exam_id
-                    .eq(same_day_exam::second_slot_exam_id)
-                    .and(second_sequence.eq(0))),
-            )
-            .select((first_id, second_id))
-            .load_iter::<(SessionId, SessionId), _>(db)?;
-
-        for row in same_day_rows {
-            let (first_session_id, second_session_id) = row?;
-
-            self.scheduler
-                .add_allowed_timeslots(first_session_id, morning_timeslots.clone());
-
-            self.scheduler
-                .add_pair_constraint(first_session_id, second_session_id, days.clone());
-        }
-
-        Ok(())
-    }
-
-    /// Load and apply week separation constraints between exam pairs.
-    pub fn apply_week_separation_from_db(
-        &mut self,
-        db: &mut SqliteConnection,
-    ) -> Result<(), SolveError> {
         let week_entries: Vec<_> = timeslot::table
             .select((timeslot::id, timeslot::date))
             .load_iter::<(TimeslotId, time::Date), DefaultLoadingMode>(db)?
-            .map_ok(|(id, date)| (id, date.iso_week()))
+            .map_ok(|(id, date)| (id, date.iso_week().into()))
             .try_collect()?;
+        let week_map = self.mappings.group_map(week_entries);
 
-        let week_map = self.mappings.week_map(week_entries);
+        let day_entries: Vec<_> = timeslot::table
+            .select((timeslot::id, timeslot::date))
+            .load_iter::<(TimeslotId, time::Date), DefaultLoadingMode>(db)?
+            .map_ok(|(id, date): (TimeslotId, time::Date)| (id, date.ordinal().into()))
+            .try_collect()?;
+        let day_map = self.mappings.group_map(day_entries);
 
         let (first_session, second_session) =
             alias!(session as first_session, session as second_session);
@@ -237,65 +208,64 @@ impl<'a> SchedulerBuilder<'a> {
         let (second_id, second_exam_id, second_sequence) =
             second_session.fields((session::id, session::exam_id, session::sequence));
 
-        let week_pairs = different_week_exams::table
+        let constraint_rows = exam_constraint::table
             .inner_join(
                 first_session.on(first_exam_id
-                    .eq(different_week_exams::exam1_id)
+                    .eq(exam_constraint::exam1_id)
                     .and(first_sequence.eq(0))),
             )
             .inner_join(
                 second_session.on(second_exam_id
-                    .eq(different_week_exams::exam2_id)
+                    .eq(exam_constraint::exam2_id)
                     .and(second_sequence.eq(0))),
             )
-            .select((first_id, second_id))
-            .load_iter::<(SessionId, SessionId), _>(db)?;
+            .select((first_id, second_id, exam_constraint::constraint_type))
+            .load_iter::<(SessionId, SessionId, ExamConstraintType), _>(db)?;
 
-        for row in week_pairs {
-            let (first_session_id, second_session_id) = row?;
+        for row in constraint_rows {
+            let (first_session_id, second_session_id, constraint_type) = row?;
 
-            self.scheduler.separate_exam_groups(
-                first_session_id,
-                second_session_id,
-                week_map.clone(),
-            );
-        }
+            match constraint_type {
+                ExamConstraintType::SameTime => {
+                    self.scheduler
+                        .require_same_time(first_session_id, second_session_id);
+                }
+                ExamConstraintType::SameDay => {
+                    self.scheduler
+                        .add_allowed_timeslots(first_session_id, morning_timeslots.clone());
 
-        Ok(())
-    }
-
-    /// Load and apply same-time constraints between exam pairs.
-    /// AI-generated (GPT-5.3-codex).
-    pub fn apply_same_time_constraints_from_db(
-        &mut self,
-        db: &mut SqliteConnection,
-    ) -> Result<(), SolveError> {
-        let (first_session, second_session) =
-            alias!(session as first_session, session as second_session);
-
-        let (first_id, first_exam_id, first_sequence) =
-            first_session.fields((session::id, session::exam_id, session::sequence));
-        let (second_id, second_exam_id, second_sequence) =
-            second_session.fields((session::id, session::exam_id, session::sequence));
-
-        let same_time_rows = same_time_exam::table
-            .inner_join(
-                first_session.on(first_exam_id
-                    .eq(same_time_exam::exam1_id)
-                    .and(first_sequence.eq(0))),
-            )
-            .inner_join(
-                second_session.on(second_exam_id
-                    .eq(same_time_exam::exam2_id)
-                    .and(second_sequence.eq(0))),
-            )
-            .select((first_id, second_id))
-            .load_iter::<(SessionId, SessionId), _>(db)?;
-
-        for row in same_time_rows {
-            let (first_session_id, second_session_id) = row?;
-            self.scheduler
-                .require_same_time(first_session_id, second_session_id);
+                    self.scheduler.add_pair_constraint(
+                        first_session_id,
+                        second_session_id,
+                        days.clone(),
+                    );
+                }
+                ExamConstraintType::SameWeek => {
+                    self.scheduler.add_pair_constraint(
+                        first_session_id,
+                        second_session_id,
+                        weeks.clone(),
+                    );
+                }
+                ExamConstraintType::DifferentTime => {
+                    self.scheduler
+                        .require_different_time(first_session_id, second_session_id);
+                }
+                ExamConstraintType::DifferentDay => {
+                    self.scheduler.separate_exam_groups(
+                        first_session_id,
+                        second_session_id,
+                        day_map.clone(),
+                    );
+                }
+                ExamConstraintType::DifferentWeek => {
+                    self.scheduler.separate_exam_groups(
+                        first_session_id,
+                        second_session_id,
+                        week_map.clone(),
+                    );
+                }
+            }
         }
 
         Ok(())
@@ -366,6 +336,23 @@ fn group_days(
     for row in rows {
         let (id, date) = row?;
         groups.entry(date).or_default().push(id);
+    }
+
+    Ok(groups)
+}
+
+/// Groups timeslots by the calendar week.
+pub fn group_weeks(db: &mut SqliteConnection) -> Result<HashMap<u8, Vec<TimeslotId>>, SolveError> {
+    let rows = timeslot::table
+        .order((timeslot::date.asc(), timeslot::slot.asc()))
+        .select((timeslot::id, timeslot::date))
+        .load_iter::<(TimeslotId, time::Date), _>(db)?;
+
+    let mut groups: HashMap<_, Vec<_>> = HashMap::new();
+
+    for row in rows {
+        let (id, date): (TimeslotId, time::Date) = row?;
+        groups.entry(date.iso_week()).or_default().push(id);
     }
 
     Ok(groups)

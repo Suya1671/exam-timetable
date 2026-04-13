@@ -3,7 +3,7 @@
 	import { sessionTimeConfig, timeslot } from '$lib/db/schema';
 	import EnhancedDateField from '$lib/EnhancedDatePicker.svelte';
 	import { dateKeyUTC } from '$lib/dateKeys';
-	import { eq, inArray } from 'drizzle-orm';
+	import { asc, eq, inArray } from 'drizzle-orm';
 	import { createForm } from '@tanstack/svelte-form';
 	import { pipe, date } from 'valibot';
 	import { Button, Icon } from 'm3-svelte';
@@ -83,9 +83,11 @@
 	const sessionTimesForm = createForm(() => ({
 		defaultValues: {
 			session1ReadingStartTime: sessionReadingStarts.slot0,
-			session1ExamStartTime: initialSession1Config?.examStartTime ?? new Temporal.PlainTime(8, 0, 0),
+			session1ExamStartTime:
+				initialSession1Config?.examStartTime ?? new Temporal.PlainTime(8, 0, 0),
 			session2ReadingStartTime: sessionReadingStarts.slot1,
-			session2ExamStartTime: initialSession2Config?.examStartTime ?? new Temporal.PlainTime(12, 0, 0)
+			session2ExamStartTime:
+				initialSession2Config?.examStartTime ?? new Temporal.PlainTime(12, 0, 0)
 		},
 		onSubmit: async ({ value, formApi }) => {
 			await db.transaction(async (tx) => {
@@ -132,8 +134,10 @@
 	function syncExamPeriodFromTimeslots(rows: (typeof allTimeslots)[number][]) {
 		if (rows.length === 0) return;
 
-		let startDate = rows[0].date;
-		let endDate = rows[0].date;
+		// safety: we checked if rows is empty above
+		let startDate = rows[0]!.date;
+		let endDate = rows[0]!.date;
+
 		for (const row of rows) {
 			if (row.date < startDate) startDate = row.date;
 			if (row.date > endDate) endDate = row.date;
@@ -164,8 +168,13 @@
 		return map;
 	});
 
-	let focusedMonth = $state(new Date().getUTCMonth());
-	let focusedYear = $state(new Date().getUTCFullYear());
+	const startingDate =
+		(
+			await db.select({ date: timeslot.date }).from(timeslot).orderBy(asc(timeslot.date)).limit(1)
+		)[0]?.date ?? new Date();
+
+	let focusedMonth = $state(startingDate.getUTCMonth());
+	let focusedYear = $state(startingDate.getUTCFullYear());
 
 	/** AI-generated (GPT-5.3-codex). */
 	async function refreshTimeslots() {
@@ -188,12 +197,6 @@
 		];
 		const rest = ['October', 'November', 'December'];
 		return [...months, ...rest][month] ?? 'Unknown';
-	}
-
-	function defaultStartTimeForSlot(slot: number)  {
-		if (slot === 0) return sessionReadingStarts.slot0;
-		if (slot === 1) return sessionReadingStarts.slot1;
-		return new Temporal.PlainTime(8, 0, 0);
 	}
 
 	/** AI-generated (GPT-5.3-codex). */
@@ -273,8 +276,7 @@
 
 		await db.insert(timeslot).values({
 			date,
-			slot: slotNumber,
-			startTime: defaultStartTimeForSlot(slotNumber)
+			slot: slotNumber
 		});
 		await refreshTimeslots();
 	}
@@ -379,7 +381,9 @@
 										step="60"
 										value={field.state.value.toString({ smallestUnit: 'minute' })}
 										onchange={(event) =>
-											field.handleChange(Temporal.PlainTime.from((event.currentTarget as HTMLInputElement).value))}
+											field.handleChange(
+												Temporal.PlainTime.from((event.currentTarget as HTMLInputElement).value)
+											)}
 									/>
 								{/snippet}
 							</sessionTimesForm.Field>
@@ -394,7 +398,9 @@
 										step="60"
 										value={field.state.value.toString({ smallestUnit: 'minute' })}
 										onchange={(event) =>
-											field.handleChange(Temporal.PlainTime.from((event.currentTarget as HTMLInputElement).value))}
+											field.handleChange(
+												Temporal.PlainTime.from((event.currentTarget as HTMLInputElement).value)
+											)}
 									/>
 								{/snippet}
 							</sessionTimesForm.Field>
@@ -409,7 +415,9 @@
 										step="60"
 										value={field.state.value.toString({ smallestUnit: 'minute' })}
 										onchange={(event) =>
-											field.handleChange(Temporal.PlainTime.from((event.currentTarget as HTMLInputElement).value))}
+											field.handleChange(
+												Temporal.PlainTime.from((event.currentTarget as HTMLInputElement).value)
+											)}
 									/>
 								{/snippet}
 							</sessionTimesForm.Field>
@@ -424,7 +432,9 @@
 										step="60"
 										value={field.state.value.toString({ smallestUnit: 'minute' })}
 										onchange={(event) =>
-											field.handleChange(Temporal.PlainTime.from((event.currentTarget as HTMLInputElement).value))}
+											field.handleChange(
+												Temporal.PlainTime.from((event.currentTarget as HTMLInputElement).value)
+											)}
 									/>
 								{/snippet}
 							</sessionTimesForm.Field>

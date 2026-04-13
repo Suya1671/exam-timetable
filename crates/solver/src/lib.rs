@@ -246,6 +246,17 @@ impl ExamScheduler {
         );
     }
 
+    pub fn require_different_time(&mut self, session1: SessionId, session2: SessionId) {
+        let timeslot1 = self.assignment.get(&session1).unwrap();
+        let timeslot2 = self.assignment.get(&session2).unwrap();
+
+        self.tracker.assert_hard(
+            &self.optimizer,
+            &timeslot1.ne(timeslot2),
+            ConstraintError::DifferentTime { session1, session2 },
+        );
+    }
+
     /// Add preferred timeslots for an exam with a certain priority
     ///
     /// # Params
@@ -394,7 +405,7 @@ impl ExamScheduler {
     }
 
     // TODO: make this more generic/not student based.
-    // The custom error reporting per-student is nice though...
+    // The custom error reporting per-student group is nice though...
     // I wonder if adding a way to attach context to all potential errors would be best (and what would be the best way of going about that...)
     /// Setup student constraints
     ///
@@ -404,6 +415,7 @@ impl ExamScheduler {
     ///
     /// # Constraints setup
     /// - Students cannot have two exams in the same timeslot
+    ///
     /// AI-generated (minimax-m2.5).
     pub fn setup_students(&mut self, students: Vec<StudentId>, sessions: Vec<SessionId>) {
         let exam_bools = sessions
@@ -799,6 +811,24 @@ mod tests {
             .expect("solution to exist");
 
         assert_eq!(
+            solved_timeslot(&solution, SessionId(1)),
+            solved_timeslot(&solution, SessionId(2))
+        );
+    }
+
+    #[test]
+    fn require_different_time_assigns_both_sessions_to_different_timeslots() {
+        let exam_ids = [SessionId(1), SessionId(2)];
+        let mut scheduler = ExamScheduler::new(exam_ids.iter().copied(), 3);
+        scheduler.require_different_time(SessionId(1), SessionId(2));
+
+        let solution = scheduler
+            .solve()
+            .expect("Expected a valid solution")
+            .next()
+            .expect("solution to exist");
+
+        assert_ne!(
             solved_timeslot(&solution, SessionId(1)),
             solved_timeslot(&solution, SessionId(2))
         );

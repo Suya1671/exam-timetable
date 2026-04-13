@@ -19,7 +19,6 @@
 		required = false,
 		label,
 		helperText = null,
-		leadingIcon = undefined,
 		type,
 		...extraOptions
 	}: Props = $props();
@@ -45,7 +44,6 @@
 		{type}
 		{label}
 		{disabled}
-		{leadingIcon}
 		{required}
 		{...extraOptions}
 	/>

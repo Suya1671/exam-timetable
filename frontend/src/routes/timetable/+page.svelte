@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Button } from 'm3-svelte';
 	import { db } from '$lib/db';
-	import { timetableSlots, timetables } from '$lib/db/schema';
+	import { sessionTimeConfig, timetableSlots, timetables } from '$lib/db/schema';
 	import {
 		createTauRPCProxy,
 		type InitSolverError,
@@ -62,11 +62,18 @@
 		}
 	});
 
-	const initialSessionTimes = await db.query.sessionTimeConfig.findMany({
+	type SessionTimeRow = typeof sessionTimeConfig.$inferSelect;
+	type SessionTimesMap = Record<SessionTimeRow['slot'], SessionTimeRow>;
+
+	const sessionTimes = await db.query.sessionTimeConfig.findMany({
 		orderBy: {
 			slot: 'asc'
 		}
 	});
+
+	const sessionTimeBySlot: SessionTimesMap = Object.fromEntries(
+		sessionTimes.map((row) => [row.slot, row])
+	);
 
 	const initialSavedTimetables = await db.query.timetables.findMany({
 		orderBy: {
@@ -152,15 +159,12 @@
 		return `${isoYear}-W${isoWeek.toString().padStart(2, '0')}`;
 	}
 
-	const sessionTimeBySlot = $derived.by(
-		() => new Map(initialSessionTimes.map((row) => [row.slot, row]))
-	);
-
 	/** AI-generated (GPT-5.3-codex). */
 	function timeOverrideFor(sessionId: number) {
 		return timeOverrides.get(sessionId) ?? null;
 	}
 
+	/** AI-generated (GPT-5.3-codex). */
 	const days = $derived.by(() => {
 		const gradeValuesForRows = grades.map((grade) => grade.value);
 		const byDate = new SvelteMap<string, TimetableDay>();
@@ -168,8 +172,9 @@
 		for (const timeslot of initialTimeslots) {
 			const key = dateKeyUTC(timeslot.date);
 			const weekKey = isoWeekKey(timeslot.date);
-			const sessionTime = sessionTimeBySlot.get(timeslot.slot);
-			const defaultReadingStart = sessionTime?.readingStartTime ?? timeslot.startTime;
+			const sessionTime = sessionTimeBySlot[timeslot.slot];
+			if (!sessionTime) throw new Error(`sessionTime for slot ${timeslot.slot} is not set`);
+			const defaultReadingStart = sessionTime?.readingStartTime;
 			const defaultExamStart =
 				sessionTime?.examStartTime ?? defaultReadingStart.add({ minutes: 15 });
 			const row: TimetableSessionRow = {
@@ -186,9 +191,10 @@
 				const readingStart = override?.readingStartTime ?? defaultReadingStart;
 				const examStart = override?.examStartTime ?? defaultExamStart;
 				const examEnd =
-					override?.examEndTime ?? examStart.add({ minutes: Math.round(session.durationHours * 60) });
+					override?.examEndTime ??
+					examStart.add({ minutes: Math.round(session.durationHours * 60) });
 
-				row.examsByGrade[gradeIndex].push({
+				row.examsByGrade[gradeIndex]?.push({
 					sessionId: session.sessionId,
 					examId: session.examId,
 					grade: session.grade,
@@ -237,7 +243,7 @@
 		}
 
 		if ('Timetable' in update) {
-		    // typesafety: we know that the key and the value always exist as per the rust-side arguments
+			// typesafety: we know that the key and the value always exist as per the rust-side arguments
 			variants.push(parseSolution(update.Timetable as Record<number, TimeslotId>));
 			if (variants.length === 1) {
 				variantIndex = 0;
@@ -425,7 +431,7 @@
 
 		try {
 			const result = await backend.solve_single(buildLockedSlots());
-            // typesafety: we know that the key and the value always exist as per the rust-side arguments
+			// typesafety: we know that the key and the value always exist as per the rust-side arguments
 			variants.push(parseSolution(result as Record<number, TimeslotId>));
 			if (variants.length === 1) {
 				variantIndex = 0;
@@ -482,15 +488,21 @@
 			current?.readingStartTime?.toString({ smallestUnit: 'minute' })
 		);
 		if (reading === null) return;
-		const examStart = prompt('Exam start time (HH:MM)', current?.examStartTime?.toString({ smallestUnit: 'minute' }) ?? '');
+		const examStart = prompt(
+			'Exam start time (HH:MM)',
+			current?.examStartTime?.toString({ smallestUnit: 'minute' }) ?? ''
+		);
 		if (examStart === null) return;
-		const examEnd = prompt('Exam end time (HH:MM)', current?.examEndTime?.toString({ smallestUnit: 'minute' }) ?? '');
+		const examEnd = prompt(
+			'Exam end time (HH:MM)',
+			current?.examEndTime?.toString({ smallestUnit: 'minute' }) ?? ''
+		);
 		if (examEnd === null) return;
 
 		timeOverrides.set(sessionId, {
 			readingStartTime: Temporal.PlainTime.from(reading),
 			examStartTime: Temporal.PlainTime.from(examStart),
-			examEndTime: Temporal.PlainTime.from(examEnd),
+			examEndTime: Temporal.PlainTime.from(examEnd)
 		});
 	}
 
@@ -563,7 +575,11 @@
 		</li>
 		<li><Button onclick={saveCurrentTimetable} disabled={assignments.size === 0}>Save</Button></li>
 		<li class="divider"></li>
-		<li><Button onclick={solveOnce} disabled={solving}>{solving ? 'Solving...' : 'Quick Solve'}</Button></li>
+		<li>
+			<Button onclick={solveOnce} disabled={solving}
+				>{solving ? 'Solving...' : 'Quick Solve'}</Button
+			>
+		</li>
 		<li><Button onclick={solve} disabled={solving}>Stream</Button></li>
 		{#if solveSessionId !== null && !solveDone}
 			<li><Button onclick={toggleStream}>{streamPaused ? 'Resume' : 'Pause'}</Button></li>

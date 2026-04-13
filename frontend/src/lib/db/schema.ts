@@ -49,8 +49,7 @@ export const subjectGrade = sqliteTable(
 export const timeslot = sqliteTable('timeslot', {
 	id: integer().primaryKey(),
 	date: customDate().notNull(),
-	slot: integer().notNull(),
-	startTime: customTime('start_time').notNull()
+	slot: integer().notNull()
 });
 
 export const enrolledStudent = sqliteTable(
@@ -107,6 +106,42 @@ export const exam = sqliteTable(
 	]
 );
 
+export const examConstraint = sqliteTable(
+	'exam_constraint',
+	{
+		exam1Id: integer('exam1_id')
+			.notNull()
+			.references(() => exam.id, {
+				onDelete: 'cascade',
+				onUpdate: 'cascade'
+			}),
+		exam2Id: integer('exam2_id')
+			.notNull()
+			.references(() => exam.id, {
+				onDelete: 'cascade',
+				onUpdate: 'cascade'
+			}),
+		constraintType: text('constraint_type', {
+			enum: [
+				'same_day',
+				'different_day',
+				'same_week',
+				'different_week',
+				'same_time',
+				'different_time'
+			]
+		}).notNull()
+	},
+	(table) => [
+		primaryKey({
+			columns: [table.exam1Id, table.exam2Id, table.constraintType],
+			name: 'exam_constraint_pk'
+		})
+	]
+);
+
+export type ExamConstraintType = typeof examConstraint.$inferSelect.constraintType;
+
 export const examTimeslotRestriction = sqliteTable(
 	'exam_timeslot_restriction',
 	{
@@ -127,54 +162,6 @@ export const examTimeslotRestriction = sqliteTable(
 		primaryKey({
 			columns: [table.examId, table.timeslotId],
 			name: 'exam_timeslot_restriction_pk'
-		})
-	]
-);
-
-export const sameDayExam = sqliteTable(
-	'same_day_exam',
-	{
-		firstSlotExamId: integer('first_slot_exam_id')
-			.notNull()
-			.references(() => exam.id, {
-				onDelete: 'cascade',
-				onUpdate: 'cascade'
-			}),
-		secondSlotExamId: integer('second_slot_exam_id')
-			.notNull()
-			.references(() => exam.id, {
-				onDelete: 'cascade',
-				onUpdate: 'cascade'
-			})
-	},
-	(table) => [
-		primaryKey({
-			columns: [table.firstSlotExamId, table.secondSlotExamId],
-			name: 'same_day_exam_pk'
-		})
-	]
-);
-
-export const sameTimeExam = sqliteTable(
-	'same_time_exam',
-	{
-		exam1Id: integer('exam1_id')
-			.notNull()
-			.references(() => exam.id, {
-				onDelete: 'cascade',
-				onUpdate: 'cascade'
-			}),
-		exam2Id: integer('exam2_id')
-			.notNull()
-			.references(() => exam.id, {
-				onDelete: 'cascade',
-				onUpdate: 'cascade'
-			})
-	},
-	(table) => [
-		primaryKey({
-			columns: [table.exam1Id, table.exam2Id],
-			name: 'same_time_exam_pk'
 		})
 	]
 );
@@ -233,30 +220,6 @@ export const timetableSlots = sqliteTable(
 		primaryKey({
 			columns: [table.timetableId, table.sessionId],
 			name: 'timetable_slots_pk'
-		})
-	]
-);
-
-export const differentWeekExams = sqliteTable(
-	'different_week_exams',
-	{
-		exam1Id: integer('exam1_id')
-			.notNull()
-			.references(() => exam.id, {
-				onDelete: 'cascade',
-				onUpdate: 'cascade'
-			}),
-		exam2Id: integer('exam2_id')
-			.notNull()
-			.references(() => exam.id, {
-				onDelete: 'cascade',
-				onUpdate: 'cascade'
-			})
-	},
-	(table) => [
-		primaryKey({
-			columns: [table.exam1Id, table.exam2Id],
-			name: 'different_week_exams_pk'
 		})
 	]
 );
