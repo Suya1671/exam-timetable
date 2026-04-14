@@ -100,7 +100,8 @@ export const db = drizzle(
 		const normalizedRows = normalizeRows(result.rows);
 
 		if (method === 'get') {
-			return { rows: normalizedRows[0] ?? undefined };
+			// Weird workaround
+			return { rows: normalizedRows[0] ?? (undefined as unknown as any[]) };
 		}
 
 		return { rows: normalizedRows };
@@ -126,7 +127,8 @@ export const db = drizzle(
 			const normalizedRows = normalizeRows(queryResult.rows);
 
 			if (method === 'get') {
-				return { rows: normalizedRows[0] ?? undefined };
+				// Weird workaround
+				return { rows: normalizedRows[0] ?? (undefined as unknown as any[]) };
 			}
 
 			return { rows: normalizedRows };

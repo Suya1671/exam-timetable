@@ -9,22 +9,25 @@
 		type NewTimetableUpdate,
 		type SolveSessionControlError,
 		type SolveSessionStart,
+		type TimetableDay,
+		type TimetableSession,
 		type TimeslotId
 	} from '$lib/backend';
 	import { eq } from 'drizzle-orm';
 	import { dateKeyUTC } from '$lib/dateKeys';
-	import { formatExamLabel } from '$lib/examDisplay';
 	import ExamTimetableSheet from './ExamTimetableSheet.svelte';
-	import type { TimetableDay, TimetableGrade, TimetableSessionRow } from './types';
-	import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
+	import ExportTimetableDialog from './ExportTimetableDialog.svelte';
+	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import { Temporal } from '@js-temporal/polyfill';
 
 	type SessionView = {
 		sessionId: number;
 		examId: number;
 		grade: number;
-		label: string;
+		subject: string;
 		durationHours: number;
+		paper: number;
+		examName: string | null;
 		subjectFamily: string;
 	};
 
@@ -81,7 +84,7 @@
 		}
 	});
 
-	const gradeValues = $derived.by(() => {
+	const grades = $derived.by(() => {
 		const uniqueGrades = new SvelteSet<number>();
 		for (const row of initialGrades) {
 			uniqueGrades.add(row.grade);
@@ -89,17 +92,15 @@
 		return [...uniqueGrades].sort((a, b) => a - b);
 	});
 
-	const grades = $derived.by(() => {
-		return gradeValues.map((value) => ({ value, label: `Grade ${value}` })) as TimetableGrade[];
-	});
-
 	const sessions = $derived.by(() => {
 		return initialSessions.map((row) => ({
 			sessionId: row.id,
+			examName: row.exam.name,
 			examId: row.examId,
 			grade: row.exam.grade,
-			label: formatExamLabel(row.exam),
+			subject: row.exam.subject.name,
 			durationHours: row.exam.durationHours,
+			paper: row.exam.paper,
 			subjectFamily: row.exam.subject.name
 		})) as SessionView[];
 	});
@@ -127,66 +128,48 @@
 	});
 
 	/** AI-generated (GPT-5.3-codex). */
-	function toDateLabel(date: Date) {
-		const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-		const months = [
-			'Jan',
-			'Feb',
-			'Mar',
-			'Apr',
-			'May',
-			'Jun',
-			'Jul',
-			'Aug',
-			'Sep',
-			'Oct',
-			'Nov',
-			'Dec'
-		];
-		return `${weekdays[date.getUTCDay()]} ${date.getUTCDate()} ${months[date.getUTCMonth()]}`;
-	}
-
-	/** AI-generated (GPT-5.3-codex). */
-	function isoWeekKey(date: Date): string {
-		const utcDate = new SvelteDate(
-			Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
-		);
-		const weekday = utcDate.getUTCDay() || 7;
-		utcDate.setUTCDate(utcDate.getUTCDate() + 4 - weekday);
-		const isoYear = utcDate.getUTCFullYear();
-		const yearStart = new Date(Date.UTC(isoYear, 0, 1));
-		const isoWeek = Math.ceil(((utcDate.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-		return `${isoYear}-W${isoWeek.toString().padStart(2, '0')}`;
-	}
-
-	/** AI-generated (GPT-5.3-codex). */
 	function timeOverrideFor(sessionId: number) {
 		return timeOverrides.get(sessionId) ?? null;
 	}
 
-	/** AI-generated (GPT-5.3-codex). */
+	/**
+	 * Gets the week number from 1-52 (ISO 8601).
+	 */
+	const getWeekNumber = (date: Date) => {
+		const week = Temporal.PlainDate.from(date.toISOString().split('T')[0]!).weekOfYear;
+		if (week === undefined) throw new Error(`weekOfYear is not set for date ${date.toISOString()}`);
+		return week;
+	};
+
+	const firstDay = $derived(
+		new Date(
+			Math.min(
+				...initialTimeslots.map((timeslot) => timeslot.date.getTime())
+			)
+		)
+	);
+	const firstWeek = $derived(getWeekNumber(firstDay));
+
+	/** AI-generated (GPT-5.3-codex). Modified but not fully checked over */
 	const days = $derived.by(() => {
-		const gradeValuesForRows = grades.map((grade) => grade.value);
 		const byDate = new SvelteMap<string, TimetableDay>();
 
 		for (const timeslot of initialTimeslots) {
 			const key = dateKeyUTC(timeslot.date);
-			const weekKey = isoWeekKey(timeslot.date);
+			const weekNumber = getWeekNumber(timeslot.date) - firstWeek + 1;
 			const sessionTime = sessionTimeBySlot[timeslot.slot];
 			if (!sessionTime) throw new Error(`sessionTime for slot ${timeslot.slot} is not set`);
 			const defaultReadingStart = sessionTime?.readingStartTime;
 			const defaultExamStart =
 				sessionTime?.examStartTime ?? defaultReadingStart.add({ minutes: 15 });
-			const row: TimetableSessionRow = {
-				label: `Session ${timeslot.slot + 1}:`,
+			const row: TimetableSession = {
+				sessionNumber: timeslot.slot + 1,
 				timeslotId: timeslot.id,
-				examsByGrade: gradeValuesForRows.map(() => [])
+				exams: []
 			};
 
 			for (const session of sessions) {
 				if (assignments.get(session.sessionId) !== timeslot.id) continue;
-				const gradeIndex = gradeValuesForRows.indexOf(session.grade);
-				if (gradeIndex < 0) continue;
 				const override = timeOverrideFor(session.sessionId);
 				const readingStart = override?.readingStartTime ?? defaultReadingStart;
 				const examStart = override?.examStartTime ?? defaultExamStart;
@@ -194,24 +177,30 @@
 					override?.examEndTime ??
 					examStart.add({ minutes: Math.round(session.durationHours * 60) });
 
-				row.examsByGrade[gradeIndex]?.push({
+				row.exams.push({
 					sessionId: session.sessionId,
 					examId: session.examId,
 					grade: session.grade,
-					label: labelOverrides.get(session.sessionId) ?? session.label,
-					timeRange: `${readingStart.toLocaleString('en-ZA', { hour: '2-digit', minute: '2-digit' })} - ${examEnd.toLocaleString('en-ZA', { hour: '2-digit', minute: '2-digit' })}`,
-					locked: lockedSessions.has(session.sessionId),
-					subjectFamily: session.subjectFamily
+					examName: session.examName,
+					subject: labelOverrides.get(session.sessionId) ?? session.subject,
+					startTime: readingStart.toLocaleString('en-ZA', { hour: '2-digit', minute: '2-digit' }),
+					endTime: examEnd.toLocaleString('en-ZA', { hour: '2-digit', minute: '2-digit' }),
+					paperNumber: session.paper,
+					locked: lockedSessions.has(session.sessionId)
 				});
 			}
 
-			for (const entries of row.examsByGrade) {
-				entries.sort((a, b) => a.label.localeCompare(b.label));
-			}
+			row.exams.sort((a, b) => {
+				const gradeDiff = a.grade - b.grade;
+				if (gradeDiff !== 0) return gradeDiff;
+				const subjectDiff = a.subject.localeCompare(b.subject);
+				if (subjectDiff !== 0) return subjectDiff;
+				return a.paperNumber - b.paperNumber;
+			});
 
 			const existing = byDate.get(key);
 			if (!existing) {
-				byDate.set(key, { dateLabel: toDateLabel(timeslot.date), weekKey, sessions: [row] });
+				byDate.set(key, { date: timeslot.date.toISOString(), weekNumber, sessions: [row] });
 			} else {
 				existing.sessions.push(row);
 			}
@@ -232,6 +221,7 @@
 	let solveSessionId = $state<number | null>(null);
 	let solveDone = $state(false);
 	let streamPaused = $state(false);
+	let showExportDialog = $state(false);
 
 	/** AI-generated (GPT-5.3-codex). */
 	function handleSolveUpdate(update: NewTimetableUpdate) {
@@ -465,13 +455,16 @@
 	}
 
 	/** AI-generated (GPT-5.3-codex). */
-	function editLabel(sessionId: number) {
+	function editSubject(sessionId: number) {
 		const session = sessions.find((session) => session.sessionId === sessionId);
 		if (!session) return;
-		const nextLabel = prompt('Edit exam label', labelOverrides.get(sessionId) ?? session.label);
-		if (nextLabel === null) return;
-		const cleaned = nextLabel.trim();
-		if (!cleaned || cleaned === session.label) {
+		const nextSubject = prompt(
+			'Edit exam subject',
+			labelOverrides.get(sessionId) ?? session.subject
+		);
+		if (nextSubject === null) return;
+		const cleaned = nextSubject.trim();
+		if (!cleaned || cleaned === session.subject) {
 			// eslint-disable-next-line drizzle/enforce-delete-with-where
 			labelOverrides.delete(sessionId);
 		} else {
@@ -552,11 +545,6 @@
 			alert(`Failed to change stream state: ${describeSolveSessionControlError(typed)}`);
 		}
 	}
-
-	/** AI-generated (GPT-5.3-codex). */
-	function printSheet() {
-		window.print();
-	}
 </script>
 
 <header class="no-print">
@@ -586,7 +574,7 @@
 			<li><Button onclick={stopSolveSession}>Stop</Button></li>
 		{/if}
 		<li class="divider"></li>
-		<li><Button onclick={printSheet}>Print</Button></li>
+		<li><Button onclick={() => (showExportDialog = true)}>Export PDF</Button></li>
 		<li><Button onclick={resetEdits}>Reset</Button></li>
 	</menu>
 </header>
@@ -624,7 +612,6 @@
 	</section>
 
 	<ExamTimetableSheet
-		schoolName="Radford House"
 		title={selectedTimetableId === null
 			? 'Draft timetable'
 			: `Saved timetable ${selectedTimetableId}`}
@@ -632,8 +619,18 @@
 		{days}
 		onMoveExam={moveExam}
 		onToggleLock={toggleLock}
-		onEditLabel={editLabel}
+		onEditLabel={editSubject}
 		onEditTimes={editSessionTimeOverride}
+	/>
+
+	<ExportTimetableDialog
+		bind:open={showExportDialog}
+		onClose={() => (showExportDialog = false)}
+		title={selectedTimetableId === null
+			? 'Draft timetable'
+			: `Saved timetable ${selectedTimetableId}`}
+		{grades}
+		{days}
 	/>
 </main>
 

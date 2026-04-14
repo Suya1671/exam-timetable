@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { db } from '$lib/db';
 	import { exam, examTimeConstraint, subject, type ExamConstraintType } from '$lib/db/schema';
-	import { asc, eq } from 'drizzle-orm';
+	import { and, asc, eq } from 'drizzle-orm';
 	import { Button, Card } from 'm3-svelte';
 	import { createForm } from '@tanstack/svelte-form';
 	import { pipe, string, nonEmpty } from 'valibot';
@@ -136,7 +136,9 @@
 
 	async function remove(exam1Id: number, exam2Id: number) {
 		if (!confirm('Delete this constraint?')) return;
-		await db.delete(examTimeConstraint).where(eq(examTimeConstraint.exam1Id, exam1Id));
+		await db
+			.delete(examTimeConstraint)
+			.where(and(eq(examTimeConstraint.exam1Id, exam1Id), eq(examTimeConstraint.exam2Id, exam2Id)));
 		constraints = loadConstraints();
 	}
 </script>
@@ -303,7 +305,7 @@
 			{#if loaded.length === 0}
 				<p class="empty">No time constraints yet.</p>
 			{:else}
-				{#each TYPE_OPTIONS as { value, text }}
+				{#each TYPE_OPTIONS as { value, text } (value)}
 					{@const filtered = loaded.filter((c) => c.constraintType === value)}
 					{#if filtered.length > 0}
 						<table>

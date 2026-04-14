@@ -1,0 +1,1593 @@
+{
+  "schoolName": "School of The Crab",
+  "title": "Saved timetable 1",
+  "grades": [
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+  ],
+  "days": [
+    {
+      "date": "2026-06-04T00:00:00.000Z",
+      "weekNumber": 1,
+      "sessions": [
+        {
+          "sessionNumber": 1,
+          "timeslotId": 1,
+          "exams": [
+            {
+              "sessionId": 1,
+              "examId": 1,
+              "grade": 7,
+              "subject": "English",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 18,
+              "examId": 18,
+              "grade": 9,
+              "subject": "Afrikaans/Isizulu",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 39,
+              "examId": 39,
+              "grade": 10,
+              "subject": "History",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "11:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 116,
+              "examId": 90,
+              "grade": 10,
+              "subject": "IT",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 40,
+              "examId": 40,
+              "grade": 11,
+              "subject": "History",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "11:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 72,
+              "examId": 59,
+              "grade": 11,
+              "subject": "Physical Science",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "11:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 41,
+              "examId": 41,
+              "grade": 12,
+              "subject": "History",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 74,
+              "examId": 61,
+              "grade": 12,
+              "subject": "Physical Science",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "11:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 99,
+              "examId": 86,
+              "grade": 12,
+              "subject": "Visual Arts",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "11:00",
+              "paperNumber": 1,
+              "locked": false
+            }
+          ]
+        },
+        {
+          "sessionNumber": 2,
+          "timeslotId": 2,
+          "exams": [
+            {
+              "sessionId": 84,
+              "examId": 71,
+              "grade": 10,
+              "subject": "Accounting",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 71,
+              "examId": 58,
+              "grade": 10,
+              "subject": "Physical Science",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "13:30",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 98,
+              "examId": 85,
+              "grade": 11,
+              "subject": "Visual Arts",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 90,
+              "examId": 77,
+              "grade": 12,
+              "subject": "Drama",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 42,
+              "examId": 42,
+              "grade": 12,
+              "subject": "History",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 2,
+              "locked": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-06-05T00:00:00.000Z",
+      "weekNumber": 1,
+      "sessions": [
+        {
+          "sessionNumber": 1,
+          "timeslotId": 3,
+          "exams": [
+            {
+              "sessionId": 69,
+              "examId": 43,
+              "grade": 10,
+              "subject": "Geography",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 125,
+              "examId": 99,
+              "grade": 11,
+              "subject": "Math Literacy",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:30",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 32,
+              "examId": 32,
+              "grade": 11,
+              "subject": "Maths",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:30",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 23,
+              "examId": 23,
+              "grade": 12,
+              "subject": "Afrikaans/Isizulu",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:30",
+              "paperNumber": 1,
+              "locked": false
+            }
+          ]
+        },
+        {
+          "sessionNumber": 2,
+          "timeslotId": 4,
+          "exams": [
+            {
+              "sessionId": 68,
+              "examId": 44,
+              "grade": 10,
+              "subject": "Geography",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "13:30",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 10,
+              "examId": 10,
+              "grade": 11,
+              "subject": "English",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 12,
+              "examId": 12,
+              "grade": 12,
+              "subject": "English",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 2,
+              "locked": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-06-08T00:00:00.000Z",
+      "weekNumber": 2,
+      "sessions": [
+        {
+          "sessionNumber": 1,
+          "timeslotId": 9,
+          "exams": [
+            {
+              "sessionId": 138,
+              "examId": 112,
+              "grade": 7,
+              "subject": "Geography",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 37,
+              "examId": 37,
+              "grade": 8,
+              "subject": "History",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 38,
+              "examId": 38,
+              "grade": 9,
+              "subject": "History",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 112,
+              "examId": 87,
+              "grade": 10,
+              "subject": "Visual Arts",
+              "examName": "Practical",
+              "startTime": "07:45",
+              "endTime": "11:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 73,
+              "examId": 60,
+              "grade": 11,
+              "subject": "Physical Science",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:30",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 108,
+              "examId": 88,
+              "grade": 11,
+              "subject": "Visual Arts",
+              "examName": "Practical",
+              "startTime": "07:45",
+              "endTime": "11:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 89,
+              "examId": 76,
+              "grade": 12,
+              "subject": "Business Studies",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "11:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 104,
+              "examId": 89,
+              "grade": 12,
+              "subject": "Visual Arts",
+              "examName": "Practical",
+              "startTime": "07:45",
+              "endTime": "11:00",
+              "paperNumber": 2,
+              "locked": false
+            }
+          ]
+        },
+        {
+          "sessionNumber": 2,
+          "timeslotId": 10,
+          "exams": [
+            {
+              "sessionId": 132,
+              "examId": 106,
+              "grade": 7,
+              "subject": "Life Orientation",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "13:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 139,
+              "examId": 113,
+              "grade": 8,
+              "subject": "Geography",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 140,
+              "examId": 114,
+              "grade": 9,
+              "subject": "Geography",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 113,
+              "examId": 87,
+              "grade": 10,
+              "subject": "Visual Arts",
+              "examName": "Practical",
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 109,
+              "examId": 88,
+              "grade": 11,
+              "subject": "Visual Arts",
+              "examName": "Practical",
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 75,
+              "examId": 62,
+              "grade": 12,
+              "subject": "Physical Science",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 105,
+              "examId": 89,
+              "grade": 12,
+              "subject": "Visual Arts",
+              "examName": "Practical",
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 2,
+              "locked": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-06-09T00:00:00.000Z",
+      "weekNumber": 2,
+      "sessions": [
+        {
+          "sessionNumber": 1,
+          "timeslotId": 11,
+          "exams": [
+            {
+              "sessionId": 129,
+              "examId": 103,
+              "grade": 7,
+              "subject": "Physical Science",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 77,
+              "examId": 64,
+              "grade": 8,
+              "subject": "Biology",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 78,
+              "examId": 65,
+              "grade": 9,
+              "subject": "Biology",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 114,
+              "examId": 87,
+              "grade": 10,
+              "subject": "Visual Arts",
+              "examName": "Practical",
+              "startTime": "07:45",
+              "endTime": "11:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 110,
+              "examId": 88,
+              "grade": 11,
+              "subject": "Visual Arts",
+              "examName": "Practical",
+              "startTime": "07:45",
+              "endTime": "11:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 67,
+              "examId": 47,
+              "grade": 12,
+              "subject": "Geography",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "11:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 106,
+              "examId": 89,
+              "grade": 12,
+              "subject": "Visual Arts",
+              "examName": "Practical",
+              "startTime": "07:45",
+              "endTime": "11:00",
+              "paperNumber": 2,
+              "locked": false
+            }
+          ]
+        },
+        {
+          "sessionNumber": 2,
+          "timeslotId": 12,
+          "exams": [
+            {
+              "sessionId": 93,
+              "examId": 80,
+              "grade": 7,
+              "subject": "Creative Arts",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 130,
+              "examId": 104,
+              "grade": 8,
+              "subject": "Physical Science",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 131,
+              "examId": 105,
+              "grade": 9,
+              "subject": "Physical Science",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 115,
+              "examId": 87,
+              "grade": 10,
+              "subject": "Visual Arts",
+              "examName": "Practical",
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 111,
+              "examId": 88,
+              "grade": 11,
+              "subject": "Visual Arts",
+              "examName": "Practical",
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 66,
+              "examId": 48,
+              "grade": 12,
+              "subject": "Geography",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "13:30",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 107,
+              "examId": 89,
+              "grade": 12,
+              "subject": "Visual Arts",
+              "examName": "Practical",
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 2,
+              "locked": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-06-10T00:00:00.000Z",
+      "weekNumber": 2,
+      "sessions": [
+        {
+          "sessionNumber": 1,
+          "timeslotId": 13,
+          "exams": [
+            {
+              "sessionId": 14,
+              "examId": 14,
+              "grade": 7,
+              "subject": "Afrikaans/Isizulu",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 16,
+              "examId": 16,
+              "grade": 8,
+              "subject": "Afrikaans/Isizulu",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 17,
+              "examId": 17,
+              "grade": 9,
+              "subject": "Afrikaans/Isizulu",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 56,
+              "examId": 49,
+              "grade": 10,
+              "subject": "Biology",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "09:30",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 22,
+              "examId": 22,
+              "grade": 11,
+              "subject": "Afrikaans/Isizulu",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:30",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 24,
+              "examId": 24,
+              "grade": 12,
+              "subject": "Afrikaans/Isizulu",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 2,
+              "locked": false
+            }
+          ]
+        },
+        {
+          "sessionNumber": 2,
+          "timeslotId": 14,
+          "exams": [
+            {
+              "sessionId": 26,
+              "examId": 26,
+              "grade": 7,
+              "subject": "Maths",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "13:30",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 27,
+              "examId": 27,
+              "grade": 8,
+              "subject": "Maths",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "13:30",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 29,
+              "examId": 29,
+              "grade": 9,
+              "subject": "Maths",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "13:30",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 20,
+              "examId": 20,
+              "grade": 10,
+              "subject": "Afrikaans/Isizulu",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:30",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 96,
+              "examId": 83,
+              "grade": 10,
+              "subject": "Further Studies English",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 126,
+              "examId": 100,
+              "grade": 11,
+              "subject": "Math Literacy",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:30",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 33,
+              "examId": 33,
+              "grade": 11,
+              "subject": "Maths",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 127,
+              "examId": 101,
+              "grade": 12,
+              "subject": "Math Literacy",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 34,
+              "examId": 34,
+              "grade": 12,
+              "subject": "Maths",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 1,
+              "locked": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-06-11T00:00:00.000Z",
+      "weekNumber": 2,
+      "sessions": [
+        {
+          "sessionNumber": 1,
+          "timeslotId": 15,
+          "exams": [
+            {
+              "sessionId": 80,
+              "examId": 67,
+              "grade": 8,
+              "subject": "EMS",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "09:30",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 82,
+              "examId": 69,
+              "grade": 9,
+              "subject": "EMS",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 123,
+              "examId": 97,
+              "grade": 10,
+              "subject": "Math Literacy",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 30,
+              "examId": 30,
+              "grade": 10,
+              "subject": "Maths",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            }
+          ]
+        },
+        {
+          "sessionNumber": 2,
+          "timeslotId": 16,
+          "exams": [
+            {
+              "sessionId": 83,
+              "examId": 70,
+              "grade": 9,
+              "subject": "EMS",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 2,
+              "locked": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-06-12T00:00:00.000Z",
+      "weekNumber": 2,
+      "sessions": [
+        {
+          "sessionNumber": 1,
+          "timeslotId": 17,
+          "exams": []
+        },
+        {
+          "sessionNumber": 2,
+          "timeslotId": 18,
+          "exams": [
+            {
+              "sessionId": 76,
+              "examId": 63,
+              "grade": 7,
+              "subject": "Biology",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 8,
+              "examId": 8,
+              "grade": 10,
+              "subject": "English",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:30",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 9,
+              "examId": 9,
+              "grade": 11,
+              "subject": "English",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 11,
+              "examId": 11,
+              "grade": 12,
+              "subject": "English",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 1,
+              "locked": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-06-17T00:00:00.000Z",
+      "weekNumber": 3,
+      "sessions": [
+        {
+          "sessionNumber": 1,
+          "timeslotId": 27,
+          "exams": [
+            {
+              "sessionId": 15,
+              "examId": 15,
+              "grade": 8,
+              "subject": "Afrikaans/Isizulu",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 141,
+              "examId": 115,
+              "grade": 9,
+              "subject": "Maths",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "09:30",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 19,
+              "examId": 19,
+              "grade": 10,
+              "subject": "Afrikaans/Isizulu",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:30",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 65,
+              "examId": 45,
+              "grade": 11,
+              "subject": "Geography",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "11:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 128,
+              "examId": 102,
+              "grade": 12,
+              "subject": "Math Literacy",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "11:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 35,
+              "examId": 35,
+              "grade": 12,
+              "subject": "Maths",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "11:00",
+              "paperNumber": 2,
+              "locked": false
+            }
+          ]
+        },
+        {
+          "sessionNumber": 2,
+          "timeslotId": 28,
+          "exams": [
+            {
+              "sessionId": 28,
+              "examId": 28,
+              "grade": 8,
+              "subject": "Maths",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 124,
+              "examId": 98,
+              "grade": 10,
+              "subject": "Math Literacy",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 31,
+              "examId": 31,
+              "grade": 10,
+              "subject": "Maths",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 122,
+              "examId": 96,
+              "grade": 11,
+              "subject": "Drama",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 64,
+              "examId": 46,
+              "grade": 11,
+              "subject": "Geography",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "13:30",
+              "paperNumber": 2,
+              "locked": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-06-18T00:00:00.000Z",
+      "weekNumber": 3,
+      "sessions": [
+        {
+          "sessionNumber": 1,
+          "timeslotId": 29,
+          "exams": [
+            {
+              "sessionId": 57,
+              "examId": 50,
+              "grade": 10,
+              "subject": "Biology",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "09:30",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 21,
+              "examId": 21,
+              "grade": 11,
+              "subject": "Afrikaans/Isizulu",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:30",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 63,
+              "examId": 56,
+              "grade": 12,
+              "subject": "Biology",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "09:30",
+              "paperNumber": 3,
+              "locked": false
+            }
+          ]
+        },
+        {
+          "sessionNumber": 2,
+          "timeslotId": 30,
+          "exams": [
+            {
+              "sessionId": 117,
+              "examId": 91,
+              "grade": 10,
+              "subject": "IT",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 60,
+              "examId": 53,
+              "grade": 11,
+              "subject": "Biology",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "13:30",
+              "paperNumber": 3,
+              "locked": false
+            },
+            {
+              "sessionId": 119,
+              "examId": 93,
+              "grade": 11,
+              "subject": "IT",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:30",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 62,
+              "examId": 55,
+              "grade": 12,
+              "subject": "Biology",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 121,
+              "examId": 95,
+              "grade": 12,
+              "subject": "IT",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 2,
+              "locked": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-06-19T00:00:00.000Z",
+      "weekNumber": 3,
+      "sessions": [
+        {
+          "sessionNumber": 1,
+          "timeslotId": 31,
+          "exams": [
+            {
+              "sessionId": 7,
+              "examId": 7,
+              "grade": 10,
+              "subject": "English",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:30",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 58,
+              "examId": 51,
+              "grade": 11,
+              "subject": "Biology",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 118,
+              "examId": 92,
+              "grade": 11,
+              "subject": "IT",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 61,
+              "examId": 54,
+              "grade": 12,
+              "subject": "Biology",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:30",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 120,
+              "examId": 94,
+              "grade": 12,
+              "subject": "IT",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "11:00",
+              "paperNumber": 1,
+              "locked": false
+            }
+          ]
+        },
+        {
+          "sessionNumber": 2,
+          "timeslotId": 32,
+          "exams": [
+            {
+              "sessionId": 79,
+              "examId": 66,
+              "grade": 7,
+              "subject": "EMS",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 4,
+              "examId": 4,
+              "grade": 8,
+              "subject": "English",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 6,
+              "examId": 6,
+              "grade": 9,
+              "subject": "English",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 135,
+              "examId": 109,
+              "grade": 10,
+              "subject": "Life Orientation",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "13:30",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 136,
+              "examId": 110,
+              "grade": 11,
+              "subject": "Life Orientation",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "13:30",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 137,
+              "examId": 111,
+              "grade": 12,
+              "subject": "Life Orientation",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "13:30",
+              "paperNumber": 1,
+              "locked": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-06-22T00:00:00.000Z",
+      "weekNumber": 4,
+      "sessions": [
+        {
+          "sessionNumber": 1,
+          "timeslotId": 37,
+          "exams": [
+            {
+              "sessionId": 25,
+              "examId": 25,
+              "grade": 7,
+              "subject": "Maths",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "09:30",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 81,
+              "examId": 68,
+              "grade": 8,
+              "subject": "EMS",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "09:30",
+              "paperNumber": 2,
+              "locked": false
+            }
+          ]
+        },
+        {
+          "sessionNumber": 2,
+          "timeslotId": 38,
+          "exams": [
+            {
+              "sessionId": 13,
+              "examId": 13,
+              "grade": 7,
+              "subject": "Afrikaans/Isizulu",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 94,
+              "examId": 81,
+              "grade": 8,
+              "subject": "Creative Arts",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 95,
+              "examId": 82,
+              "grade": 9,
+              "subject": "Creative Arts",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 59,
+              "examId": 52,
+              "grade": 11,
+              "subject": "Biology",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 2,
+              "locked": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-06-23T00:00:00.000Z",
+      "weekNumber": 4,
+      "sessions": [
+        {
+          "sessionNumber": 1,
+          "timeslotId": 39,
+          "exams": [
+            {
+              "sessionId": 2,
+              "examId": 2,
+              "grade": 7,
+              "subject": "English",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 3,
+              "examId": 3,
+              "grade": 8,
+              "subject": "English",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 5,
+              "examId": 5,
+              "grade": 9,
+              "subject": "English",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 92,
+              "examId": 79,
+              "grade": 10,
+              "subject": "Drama",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:30",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 85,
+              "examId": 72,
+              "grade": 11,
+              "subject": "Accounting",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 87,
+              "examId": 74,
+              "grade": 12,
+              "subject": "Accounting",
+              "examName": null,
+              "startTime": "07:45",
+              "endTime": "10:00",
+              "paperNumber": 1,
+              "locked": false
+            }
+          ]
+        },
+        {
+          "sessionNumber": 2,
+          "timeslotId": 40,
+          "exams": [
+            {
+              "sessionId": 36,
+              "examId": 36,
+              "grade": 7,
+              "subject": "History",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 133,
+              "examId": 107,
+              "grade": 8,
+              "subject": "Life Orientation",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "13:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 134,
+              "examId": 108,
+              "grade": 9,
+              "subject": "Life Orientation",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "13:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 70,
+              "examId": 57,
+              "grade": 10,
+              "subject": "Physical Science",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "13:30",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 97,
+              "examId": 84,
+              "grade": 10,
+              "subject": "Visual Arts",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:30",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 86,
+              "examId": 73,
+              "grade": 11,
+              "subject": "Accounting",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "13:00",
+              "paperNumber": 2,
+              "locked": false
+            },
+            {
+              "sessionId": 91,
+              "examId": 78,
+              "grade": 11,
+              "subject": "Drama",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "15:00",
+              "paperNumber": 1,
+              "locked": false
+            },
+            {
+              "sessionId": 88,
+              "examId": 75,
+              "grade": 12,
+              "subject": "Accounting",
+              "examName": null,
+              "startTime": "11:45",
+              "endTime": "14:00",
+              "paperNumber": 2,
+              "locked": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

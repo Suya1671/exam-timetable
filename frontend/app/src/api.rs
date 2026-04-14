@@ -1,10 +1,12 @@
+use std::collections::HashMap;
 use std::sync::mpsc;
+use std::sync::mpsc::TryRecvError;
 use std::thread;
-use std::{collections::HashMap, sync::mpsc::TryRecvError};
 
 use entity::id::{SessionId, TimeslotId};
 use rusqlite::types::{Value, ValueRef};
 use tauri::{AppHandle, Manager, Runtime, ipc::Channel};
+use tauri_plugin_dialog::DialogExt;
 
 /// AI-generated (GPT-5.3-codex).
 #[derive(Debug, thiserror::Error, serde::Serialize, specta::Type)]
@@ -232,6 +234,11 @@ pub trait Api {
         app_handle: AppHandle<R>,
         session_id: usize,
     ) -> Result<(), SolveSessionControlError>;
+
+    async fn generate_timetable_pdf<R: Runtime>(
+        app_handle: AppHandle<R>,
+        data: crate::renderer::TimetableData,
+    ) -> Result<(), String>;
 }
 
 #[derive(Clone)]
@@ -398,8 +405,6 @@ impl Api for ApiImpl {
         let solution = backend::solve_one(&mut conn, &fixed_slots)
             .map_err(|err| InitSolverError::Solver(err.to_string()))?;
 
-        dbg!(&solution);
-
         Ok(solution
             .into_iter()
             .map(|(session_id, timeslot_id)| (session_id.0, timeslot_id))
@@ -459,6 +464,34 @@ impl Api for ApiImpl {
                 .map_err(|err| SolveSessionControlError::Send(err.to_string()))?;
         } else {
             return Err(SolveSessionControlError::InvalidSessionId(session_id));
+        }
+
+        Ok(())
+    }
+
+    /// AI-generated (Gemini).
+    async fn generate_timetable_pdf<R: Runtime>(
+        self,
+        app: AppHandle<R>,
+        data: crate::renderer::TimetableData,
+    ) -> Result<(), String> {
+        let pdf_bytes = crate::renderer::render_pdf(&data)?;
+
+        let save_path = app
+            .dialog()
+            .file()
+            .add_filter("PDF document", &["pdf"])
+            .set_file_name("timetable.pdf")
+            .blocking_save_file();
+
+        if let Some(path) = save_path {
+            let path_buf = match path {
+                tauri_plugin_dialog::FilePath::Path(p) => p,
+                tauri_plugin_dialog::FilePath::Url(u) => u
+                    .to_file_path()
+                    .map_err(|_| "Failed to convert URL to file path".to_string())?,
+            };
+            std::fs::write(path_buf, pdf_bytes).map_err(|e| e.to_string())?;
         }
 
         Ok(())

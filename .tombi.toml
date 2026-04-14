@@ -1,3 +1,6 @@
 toml-version = "v1.1.0"
 
 files.exclude = ["crates/hack/Cargo.toml"]
+
+[lsp]
+goto-type-definition.enabled = false

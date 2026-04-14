@@ -2,6 +2,7 @@ type ExamLike = {
 	id?: number;
 	paper: number;
 	grade?: number | null;
+	name?: string | null;
 	subject?: {
 		name?: string | null;
 	} | null;
@@ -12,7 +13,12 @@ type ExamLike = {
  */
 export function formatExamLabel(exam: ExamLike): string {
 	const subjectName = exam.subject?.name?.trim();
+	const examName = exam.name?.trim();
 	const hasGrade = exam.grade !== null && exam.grade !== undefined;
+
+	if (subjectName && examName) {
+		return `${subjectName} ${examName} (Paper ${exam.paper})`;
+	}
 
 	if (subjectName && hasGrade) {
 		return `${subjectName} Grade ${exam.grade} Paper ${exam.paper}`;

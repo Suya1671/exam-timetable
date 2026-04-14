@@ -5,6 +5,11 @@ type TAURI_CHANNEL<T> = (response: T) => void
 
 
 /**
+ * Identifier for an exam.
+ */
+export type ExamId = number
+
+/**
  * AI-generated (GPT-5.3-codex).
  */
 export type InitSolverError = 
@@ -88,8 +93,101 @@ export type SqlValue = "Null" | { Bool: boolean } | { Int: number } | { Float: n
  */
 export type TimeslotId = number
 
-const ARGS_MAP = { '':'{"pause_solve_session":["session_id"],"solve_single":["locked_slots"],"sql":["sql","params","method"],"sql_batch":["queries"],"start_solve_session":["on_new_timetable","locked_slots"],"stop_solve_session":["session_id"]}' }
-export type Router = { "": {pause_solve_session: (sessionId: number) => Promise<null>, 
+/**
+ * Data to generate a timetable PDF
+ */
+export type TimetableData = { 
+/**
+ * The name of the school
+ */
+schoolName: string; 
+/**
+ * The title of the timetable
+ */
+title: string; 
+/**
+ * The grades to include in the timetable
+ */
+grades: number[]; 
+/**
+ * The days that make up the timetable
+ */
+days: TimetableDay[] }
+
+/**
+ * A day in the timetable
+ */
+export type TimetableDay = { 
+/**
+ * The date of the day, in ISO 8601 format
+ */
+date: string; 
+/**
+ * The week number of the exam, based on the earliest week as week 1
+ */
+weekNumber: number; 
+/**
+ * The sessions that occur on this day
+ */
+sessions: TimetableSession[] }
+
+/**
+ * An exam entry in the timetable session
+ */
+export type TimetableExamEntry = { 
+/**
+ * The session ID of the exam
+ */
+sessionId: number; 
+/**
+ * The exam ID of the exam
+ */
+examId: ExamId; 
+/**
+ * The grade of the exam
+ */
+grade: number; 
+/**
+ * The subject of the exam
+ */
+subject: string; 
+/**
+ * Custom name for the exam. Replaces <Paper number> in the display
+ */
+examName: string | null; 
+/**
+ * The start of the exam, formatted as "hh:mm"
+ */
+startTime: string; 
+/**
+ * The end of the exam, formatted as "hh:mm"
+ */
+endTime: string; 
+/**
+ * The exam paper number
+ */
+paperNumber: number; locked: boolean }
+
+/**
+ * A session in the timetable
+ */
+export type TimetableSession = { 
+/**
+ * The session number (currently either 1 or 2)
+ */
+sessionNumber: number; 
+/**
+ * The timeslot ID of the session
+ */
+timeslotId: TimeslotId; 
+/**
+ * The exams that occur in this session
+ */
+exams: TimetableExamEntry[] }
+
+const ARGS_MAP = { '':'{"generate_timetable_pdf":["data"],"pause_solve_session":["session_id"],"solve_single":["locked_slots"],"sql":["sql","params","method"],"sql_batch":["queries"],"start_solve_session":["on_new_timetable","locked_slots"],"stop_solve_session":["session_id"]}' }
+export type Router = { "": {generate_timetable_pdf: (data: TimetableData) => Promise<null>, 
+pause_solve_session: (sessionId: number) => Promise<null>, 
 solve_single: (lockedSlots: LockedTimetableSlot[]) => Promise<Partial<{ [key in number]: TimeslotId }>>, 
 sql: (sql: string, params: SqlParam[], method: string) => Promise<SqlQueryResult>, 
 sql_batch: (queries: SqlBatchQuery[]) => Promise<SqlQueryResult[]>, 

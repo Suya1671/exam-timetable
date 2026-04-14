@@ -17,6 +17,7 @@ diesel::table! {
         priority -> Integer,
         slots_required -> Integer,
         timeslot_restriction_mode -> Nullable<Text>,
+        name -> Nullable<Text>,
     }
 }
 

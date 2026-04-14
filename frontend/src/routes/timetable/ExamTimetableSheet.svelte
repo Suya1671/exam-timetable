@@ -10,13 +10,13 @@
 	import { RestrictToVerticalAxis } from '@dnd-kit/abstract/modifiers';
 	import { RestrictToElement } from '@dnd-kit/dom/modifiers';
 
-	import type { TimetableDay, TimetableGrade } from './types';
+	import type { TimetableDay } from '$lib/backend';
 	import type { ComponentProps } from 'svelte';
 
 	type DnDProviderProps = ComponentProps<typeof DragDropProvider>;
 
 	let {
-		schoolName = '',
+		schoolName = 'School of The Crab',
 		title = '',
 		grades = [],
 		days = [],
@@ -27,7 +27,7 @@
 	}: {
 		schoolName?: string;
 		title?: string;
-		grades?: TimetableGrade[];
+		grades?: number[];
 		days?: TimetableDay[];
 		onMoveExam?: (sessionId: number, timeslotId: number, grade: number) => void;
 		onToggleLock?: (sessionId: number) => void;
@@ -80,6 +80,8 @@
 			accept: (source) => source.data.grade === grade
 		});
 	}
+
+	const dateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'long' });
 </script>
 
 <DragDropProvider {modifiers} {sensors} onDragEnd={handleDragEnd}>
@@ -95,43 +97,46 @@
 					<tr>
 						<th class="date-col">Date</th>
 						<th class="session-col" aria-label="Session"></th>
-						{#each grades as grade (grade.value)}
-							<th>{grade.label}</th>
+						{#each grades as grade}
+							<th>Grade {grade}</th>
 						{/each}
 					</tr>
 				</thead>
 				<tbody bind:this={containerRef}>
-					{#each days as day, dayIndex (`${day.weekKey}-${day.dateLabel}`)}
-						{@const isWeekStart = dayIndex === 0 || day.weekKey !== days[dayIndex - 1]!.weekKey}
+					{#each days as day, dayIndex (`${day.date}-${day.weekNumber}`)}
+						{@const isWeekStart =
+							dayIndex === 0 || day.weekNumber !== days[dayIndex - 1]!.weekNumber}
 						{#if isWeekStart}
 							<tr class="week-row">
-								<th colspan={grades.length + 2}>Week {day.weekKey}</th>
+								<th colspan={grades.length + 2}>Week {day.weekNumber}</th>
 							</tr>
 						{/if}
 						{#each day.sessions as session, sessionIndex (session.timeslotId)}
 							<tr>
 								{#if sessionIndex === 0}
 									<th scope="rowgroup" rowspan={day.sessions.length} class="date-label">
-										{day.dateLabel}
+										{dateFormatter.format(new Date(day.date))}
 									</th>
 								{/if}
-								<th scope="row" class="session-label">{session.label}</th>
-								{#each session.examsByGrade as examEntries, gradeIndex (gradeIndex)}
-									{@const grade = grades[gradeIndex]!}
-									{@const droppable = createCellDroppable(session.timeslotId, grade.value)}
+								<th scope="row" class="session-label">Session {session.sessionNumber}</th>
+								{#each grades as grade}
+									{@const examEntries = session.exams.filter((e) => e.grade === grade)}
+									{@const droppable = createCellDroppable(session.timeslotId, grade)}
 									<td {@attach droppable.attach} class:drop-target={droppable.isDropTarget}>
 										<ul class="cell-content">
 											{#each examEntries as entry (entry.sessionId)}
 												{@const draggable = createExamDraggable(
 													entry.sessionId,
-													grade.value,
+													grade,
 													entry.locked
 												)}
 												<li>
 													<article
 														class="exam-chip"
 														class:dragging={draggable.isDragging}
-														style={`--family-accent: ${familyColor(entry.subjectFamily)}`}
+														style={entry.subject
+															? `--family-accent: ${familyColor(entry.subject)}`
+															: ''}
 														{@attach draggable.attach}
 													>
 														<button
@@ -143,8 +148,15 @@
 														>
 															::
 														</button>
-														<p>{entry.label}</p>
-														<p class="time-range">{entry.timeRange}</p>
+														<p>{entry.subject}</p>
+														<p>
+															{#if entry.examName}
+																{entry.examName}
+															{:else}
+																Paper {entry.paperNumber}
+															{/if}
+														</p>
+														<p class="time-range">{entry.startTime} - {entry.endTime}</p>
 														<menu class="exam-actions no-print" aria-label="Exam actions">
 															<li>
 																<button

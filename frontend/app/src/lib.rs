@@ -9,6 +9,7 @@ use tauri::{App, Manager};
 use tracing::info;
 
 mod api;
+mod renderer;
 use crate::api::Api;
 use crate::api::ApiImpl;
 
@@ -39,6 +40,7 @@ pub async fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(router.into_handler())
         .setup(|app| {
             let db_conn = establish_connection(app);

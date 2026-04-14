@@ -86,6 +86,7 @@ export const exam = sqliteTable(
 				onDelete: 'cascade',
 				onUpdate: 'cascade'
 			}),
+		name: text(),
 		grade: integer().notNull(),
 		paper: integer().notNull(),
 		durationHours: real('duration_hours').notNull(),

@@ -82,7 +82,6 @@ impl ExamScheduler {
             .map(|v| v.get())
             .map(|v| v as u32)
             .unwrap_or(1);
-        dbg!(avail_parallel);
 
         params.set_bool("parallel.enable", true);
         params.set_u32("parallel.threads.max", avail_parallel);

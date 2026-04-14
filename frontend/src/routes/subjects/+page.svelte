@@ -149,6 +149,7 @@
 	durationHours={activeDialog?.type === 'editExam' ? activeDialog.exam.durationHours : 2}
 	slotsRequired={activeDialog?.type === 'editExam' ? activeDialog.exam.slotsRequired : 1}
 	priority={activeDialog?.type === 'editExam' ? activeDialog.exam.priority : 0}
+	name={activeDialog?.type === 'editExam' ? activeDialog.exam.name : null}
 	{allTimeslots}
 	onClose={closeDialog}
 	onSaved={refreshSubjects}

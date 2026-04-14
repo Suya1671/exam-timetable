@@ -20,6 +20,7 @@ name = "app_lib"
 
 [dependencies]
 backend = { path = "../../crates/backend", version = "0.1.0" }
+comemo = "0.4.0"
 diesel = { version = "2.3.7", features = [
   "returning_clauses_for_sqlite_3_35",
   "sqlite",
@@ -30,22 +31,32 @@ entity = { path = "../../crates/entity", version = "0.1.0" }
 hack = { path = "../../crates/hack", version = "0.1" }
 rusqlite = { version = "0.32.1", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
+serde_json = "1.0.139"
 slab = "0.4.12"
-specta = { version = "=2.0.0-rc.22", features = ["derive"] }
+specta = { version = "=2.0.0-rc.22", features = ["derive", "time"] }
 specta-typescript = "0.0.9"
 tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-opener = "2"
 taurpc = "0.7.1"
 thiserror = "2.0.18"
+time = { version = "0.3.47", features = ["serde"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tracing = { version = "0.1.44", features = ["async-await"] }
+typst = "0.14.2"
+typst-assets = "0.14.2"
+typst-kit = { version = "0.14", default-features = false, features = [
+  "embed-fonts",
+  "fonts"
+] }
+typst-pdf = "0.14.2"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [features]
 default = []
-vcpkg = ["backend/vcpkg"]
 gh-release = ["backend/gh-release"]
+vcpkg = ["backend/vcpkg"]
 vendored = ["backend/vendored"]

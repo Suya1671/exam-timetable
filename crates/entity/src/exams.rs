@@ -74,6 +74,7 @@ impl diesel::deserialize::FromSql<diesel::sql_types::Text, diesel::sqlite::Sqlit
 pub struct Exam {
     pub id: ExamId,
     pub subject_id: SubjectId,
+    pub name: Option<String>,
     pub grade: i32,
     pub paper: i32,
     pub duration_hours: f32,

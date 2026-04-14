@@ -8,6 +8,7 @@
 	import EnhancedTextInput from '$lib/EnhancedTextInput.svelte';
 	import TimeslotPicker from '$lib/TimeslotPicker.svelte';
 	import { durationHoursValidator, priorityValidator, slotsRequiredValidator } from './forms';
+	import { string } from 'valibot';
 
 	type RestrictionMode = 'allow' | 'deny';
 	type EditAction = 'edit' | 'delete';
@@ -18,6 +19,7 @@
 		durationHours = 2,
 		slotsRequired = 1,
 		priority = 0,
+		name = null,
 		allTimeslots,
 		onClose,
 		onSaved
@@ -27,6 +29,7 @@
 		durationHours?: number;
 		slotsRequired?: number;
 		priority?: number;
+		name?: string | null;
 		allTimeslots: Array<typeof timeslot.$inferSelect>;
 		onClose?: () => void;
 		onSaved?: () => void | Promise<void>;
@@ -39,6 +42,7 @@
 	const editExamForm = createForm(() => ({
 		defaultValues: {
 			id: 0,
+			name: '',
 			slotsRequired: 1,
 			durationHours: 2,
 			priority: 0
@@ -52,6 +56,7 @@
 					await updateExamAndRestrictions(
 						value.id,
 						{
+							name: value.name === '' ? null : value.name,
 							slotsRequired: value.slotsRequired,
 							durationHours: value.durationHours,
 							priority: value.priority
@@ -109,7 +114,10 @@
 	/** AI-generated (GPT-5.3-codex). */
 	async function updateExamAndRestrictions(
 		id: number,
-		updates: Pick<typeof exam.$inferInsert, 'slotsRequired' | 'durationHours' | 'priority'>,
+		updates: Pick<
+			typeof exam.$inferInsert,
+			'slotsRequired' | 'durationHours' | 'priority' | 'name'
+		>,
 		selectedIds: Set<number>,
 		mode: RestrictionMode
 	) {
@@ -143,6 +151,7 @@
 		editExamForm.setFieldValue('durationHours', durationHours);
 		editExamForm.setFieldValue('slotsRequired', slotsRequired);
 		editExamForm.setFieldValue('priority', priority);
+		editExamForm.setFieldValue('name', name === null ? '' : name);
 
 		restrictionMode = 'deny';
 		restrictionIds.clear();
@@ -162,6 +171,18 @@
 			bind:open={() => open, (nextOpen: boolean) => !nextOpen && onClose?.()}
 		>
 			<form id="edit-exam-form" onsubmit={handleFormSubmit}>
+				<editExamForm.Field name="name" validators={{ onChange: string() }}>
+					{#snippet children(field)}
+						<EnhancedTextInput
+							{field}
+							label="Exam Name (Optional)"
+							type="text"
+							placeholder="Enter exam name"
+							helperText="Optional exam name. Exams are by default named after the paper number (e.g. Paper 1)."
+						/>
+					{/snippet}
+				</editExamForm.Field>
+
 				<editExamForm.Field name="durationHours" validators={{ onChange: durationHoursValidator }}>
 					{#snippet children(field)}
 						<EnhancedTextInput

@@ -8,6 +8,7 @@
 	import EnhancedTextInput from '$lib/EnhancedTextInput.svelte';
 	import TimeslotPicker from '$lib/TimeslotPicker.svelte';
 	import { durationHoursValidator, priorityValidator, slotsRequiredValidator } from './forms';
+	import { string } from 'valibot';
 
 	type RestrictionMode = 'allow' | 'deny';
 
@@ -40,10 +41,17 @@
 			grade: 8,
 			slotsRequired: 1,
 			durationHours: 2,
+			name: '',
 			priority: 0
 		} satisfies typeof exam.$inferInsert,
 		onSubmit: async ({ value, formApi }) => {
-			const [createdExam] = await db.insert(exam).values(value).returning({ id: exam.id });
+			value.name = value.name?.trim();
+			const newValue = {
+				...value,
+				name: value.name == '' ? null : value.name
+			};
+
+			const [createdExam] = await db.insert(exam).values(newValue).returning({ id: exam.id });
 			if (createdExam) {
 				await replaceExamTimeslotRestrictions(createdExam.id, restrictionIds, restrictionMode);
 			}
@@ -106,6 +114,7 @@
 		addExamForm.setFieldValue('durationHours', 2);
 		addExamForm.setFieldValue('slotsRequired', 1);
 		addExamForm.setFieldValue('priority', 0);
+		addExamForm.setFieldValue('name', '');
 
 		restrictionMode = 'deny';
 		restrictionIds.clear();
@@ -127,6 +136,17 @@
 			bind:open={() => open, (nextOpen: boolean) => !nextOpen && onClose?.()}
 		>
 			<form id="add-exam-form" onsubmit={handleFormSubmit}>
+				<addExamForm.Field name="name" validators={{ onChange: string() }}>
+					{#snippet children(field)}
+						<EnhancedTextInput
+							{field}
+							label="Exam Name (Optional)"
+							placeholder="Enter exam name"
+							helperText="Optional exam name. Exams are by default named after the subject and paper number."
+						/>
+					{/snippet}
+				</addExamForm.Field>
+
 				<addExamForm.Field name="durationHours" validators={{ onChange: durationHoursValidator }}>
 					{#snippet children(field)}
 						<EnhancedTextInput
