@@ -1,6 +1,19 @@
 <script lang="ts">
-	import { draggable, droppable, type DragDropState } from '@thisux/sveltednd';
+	import {
+		DragDropProvider,
+		createDraggable,
+		createDroppable,
+		PointerSensor,
+		KeyboardSensor
+	} from '@dnd-kit/svelte';
+
+	import { RestrictToVerticalAxis } from '@dnd-kit/abstract/modifiers';
+	import { RestrictToElement } from '@dnd-kit/dom/modifiers';
+
 	import type { TimetableDay, TimetableGrade } from './types';
+	import type { ComponentProps } from 'svelte';
+
+	type DnDProviderProps = ComponentProps<typeof DragDropProvider>;
 
 	let {
 		schoolName = '',
@@ -22,53 +35,25 @@
 		onEditTimes?: (sessionId: number) => void;
 	} = $props();
 
-	let dragOverCellKey = $state<string | null>(null);
+	const sensors = [PointerSensor, KeyboardSensor];
 
-	/** AI-generated (GPT-5.3-codex). */
-	function makeCellKey(timeslotId: number, grade: number) {
-		return `${timeslotId}-${grade}`;
-	}
+	let containerRef: HTMLElement | null = null;
+	const modifiers = $derived([
+		RestrictToVerticalAxis,
+		RestrictToElement.configure({ element: containerRef })
+	]);
 
-	/** AI-generated (GPT-5.3-codex). */
-	function parseCellContainer(
-		container: string | null
-	): { timeslotId: number; grade: number } | null {
-		if (!container) return null;
-		const [timeslotText, gradeText] = container.split('-');
-		const timeslotId = Number(timeslotText);
-		const grade = Number(gradeText);
-		if (!Number.isFinite(timeslotId) || !Number.isFinite(grade)) return null;
-		return { timeslotId, grade };
-	}
+	const handleDragEnd: DnDProviderProps['onDragEnd'] = (event) => {
+		const op = event.operation;
+		const source = op?.source;
+		const target = op?.target;
+		if (!target || event.canceled) return;
+		if (!source || !source.data) return;
 
-	/** AI-generated (GPT-5.3-codex). */
-	function onDragStart(state: DragDropState<{ sessionId: number }>) {
-		void state.draggedItem.sessionId;
-	}
+		if (target.data.grade !== source.data.grade) return;
 
-	/** AI-generated (GPT-5.3-codex). */
-	function onDragEnd() {
-		dragOverCellKey = null;
-	}
-
-	/** AI-generated (GPT-5.3-codex). */
-	function onDragEnter(state: DragDropState<{ sessionId: number }>) {
-		if (!state.targetContainer) return;
-		dragOverCellKey = state.targetContainer;
-	}
-
-	/** AI-generated (GPT-5.3-codex). */
-	function onDragLeave() {
-		dragOverCellKey = null;
-	}
-
-	/** AI-generated (GPT-5.3-codex). */
-	function onDrop(state: DragDropState<{ sessionId: number }>) {
-		const target = parseCellContainer(state.targetContainer);
-		if (!target) return;
-		onMoveExam?.(state.draggedItem.sessionId, target.timeslotId, target.grade);
-		dragOverCellKey = null;
-	}
+		onMoveExam?.(source.data.sessionId, target.data.timeslotId, target.data.grade);
+	};
 
 	/** AI-generated (GPT-5.3-codex). */
 	function familyColor(subjectFamily: string): string {
@@ -79,114 +64,127 @@
 		const hue = hash % 360;
 		return `hsl(${hue} 35% 42%)`;
 	}
+
+	function createExamDraggable(sessionId: number, gradeValue: number, locked: boolean) {
+		return createDraggable({
+			id: `exam-${sessionId}`,
+			disabled: locked,
+			data: { sessionId, grade: gradeValue }
+		});
+	}
+
+	function createCellDroppable(timeslotId: number, grade: number) {
+		return createDroppable({
+			id: `${timeslotId}-${grade}`,
+			data: { timeslotId, grade },
+			accept: (source) => source.data.grade === grade
+		});
+	}
 </script>
 
-<section class="sheet" aria-label="Exam timetable">
-	<header>
-		<h2>{schoolName}</h2>
-		<h1>{title}</h1>
-	</header>
+<DragDropProvider {modifiers} {sensors} onDragEnd={handleDragEnd}>
+	<section class="sheet" aria-label="Exam timetable">
+		<header>
+			<h2>{schoolName}</h2>
+			<h1>{title}</h1>
+		</header>
 
-	<div class="table-wrap">
-		<table>
-			<thead>
-				<tr>
-					<th class="date-col">Date</th>
-					<th class="session-col" aria-label="Session"></th>
-					{#each grades as grade (grade.value)}
-						<th>{grade.label}</th>
-					{/each}
-				</tr>
-			</thead>
-			<tbody>
-				{#each days as day, dayIndex (`${day.weekKey}-${day.dateLabel}`)}
-					<!-- The index will always be within bounds -->
-					{@const isWeekStart = dayIndex === 0 || day.weekKey !== days[dayIndex - 1]!.weekKey}
-					{#if isWeekStart}
-						<tr class="week-row">
-							<th colspan={grades.length + 2}>Week {day.weekKey}</th>
-						</tr>
-					{/if}
-					{#each day.sessions as session, sessionIndex (session.timeslotId)}
-						<tr>
-							{#if sessionIndex === 0}
-								<th scope="rowgroup" rowspan={day.sessions.length} class="date-label">
-									{day.dateLabel}
-								</th>
-							{/if}
-							<th scope="row" class="session-label">{session.label}</th>
-							{#each session.examsByGrade as examEntries, gradeIndex (gradeIndex)}
-								<!-- Always in bounds -->
-								{@const grade = grades[gradeIndex]!}
-								{@const cellKey = makeCellKey(session.timeslotId, grade.value)}
-								<td
-									use:droppable={{
-										container: cellKey,
-										callbacks: {
-											onDragEnter,
-											onDragLeave,
-											onDrop
-										}
-									}}
-									class:drag-over={dragOverCellKey === cellKey}
-								>
-									<ul class="cell-content">
-										{#each examEntries as entry (entry.sessionId)}
-											<li>
-												<article
-													class="exam-chip"
-													style={`--family-accent: ${familyColor(entry.subjectFamily)}`}
-													use:draggable={{
-														container: cellKey,
-														dragData: { sessionId: entry.sessionId },
-														disabled: entry.locked,
-														handle: '.drag-handle',
-														callbacks: {
-															onDragStart,
-															onDragEnd
-														}
-													}}
-												>
-													<button
-														type="button"
-														class="drag-handle no-print"
-														disabled={entry.locked}
-														aria-label="Drag exam"
+		<div class="table-wrap">
+			<table>
+				<thead>
+					<tr>
+						<th class="date-col">Date</th>
+						<th class="session-col" aria-label="Session"></th>
+						{#each grades as grade (grade.value)}
+							<th>{grade.label}</th>
+						{/each}
+					</tr>
+				</thead>
+				<tbody bind:this={containerRef}>
+					{#each days as day, dayIndex (`${day.weekKey}-${day.dateLabel}`)}
+						{@const isWeekStart = dayIndex === 0 || day.weekKey !== days[dayIndex - 1]!.weekKey}
+						{#if isWeekStart}
+							<tr class="week-row">
+								<th colspan={grades.length + 2}>Week {day.weekKey}</th>
+							</tr>
+						{/if}
+						{#each day.sessions as session, sessionIndex (session.timeslotId)}
+							<tr>
+								{#if sessionIndex === 0}
+									<th scope="rowgroup" rowspan={day.sessions.length} class="date-label">
+										{day.dateLabel}
+									</th>
+								{/if}
+								<th scope="row" class="session-label">{session.label}</th>
+								{#each session.examsByGrade as examEntries, gradeIndex (gradeIndex)}
+									{@const grade = grades[gradeIndex]!}
+									{@const droppable = createCellDroppable(session.timeslotId, grade.value)}
+									<td {@attach droppable.attach} class:drop-target={droppable.isDropTarget}>
+										<ul class="cell-content">
+											{#each examEntries as entry (entry.sessionId)}
+												{@const draggable = createExamDraggable(
+													entry.sessionId,
+													grade.value,
+													entry.locked
+												)}
+												<li>
+													<article
+														class="exam-chip"
+														class:dragging={draggable.isDragging}
+														style={`--family-accent: ${familyColor(entry.subjectFamily)}`}
+														{@attach draggable.attach}
 													>
-														::
-													</button>
-													<p>{entry.label}</p>
-													<p class="time-range">{entry.timeRange}</p>
-													<menu class="exam-actions no-print" aria-label="Exam actions">
-														<li>
-															<button type="button" onclick={() => onToggleLock?.(entry.sessionId)}>
-																{entry.locked ? 'Unlock' : 'Lock'}
-															</button>
-														</li>
-														<li>
-															<button type="button" onclick={() => onEditLabel?.(entry.sessionId)}>
-																Edit
-															</button>
-														</li>
-														<li>
-															<button type="button" onclick={() => onEditTimes?.(entry.sessionId)}>
-																Times
-															</button>
-														</li>
-													</menu>
-												</article>
-											</li>
-										{/each}
-									</ul>
-								</td>
-							{/each}
-						</tr>
+														<button
+															type="button"
+															class="drag-handle no-print"
+															disabled={entry.locked}
+															aria-label="Drag exam"
+															{@attach draggable.attachHandle}
+														>
+															::
+														</button>
+														<p>{entry.label}</p>
+														<p class="time-range">{entry.timeRange}</p>
+														<menu class="exam-actions no-print" aria-label="Exam actions">
+															<li>
+																<button
+																	type="button"
+																	onclick={() => onToggleLock?.(entry.sessionId)}
+																>
+																	{entry.locked ? 'Unlock' : 'Lock'}
+																</button>
+															</li>
+															<li>
+																<button
+																	type="button"
+																	onclick={() => onEditLabel?.(entry.sessionId)}
+																>
+																	Edit
+																</button>
+															</li>
+															<li>
+																<button
+																	type="button"
+																	onclick={() => onEditTimes?.(entry.sessionId)}
+																>
+																	Times
+																</button>
+															</li>
+														</menu>
+													</article>
+												</li>
+											{/each}
+										</ul>
+									</td>
+								{/each}
+							</tr>
+						{/each}
 					{/each}
-				{/each}
-			</tbody>
-		</table>
-	</div>
-</section>
+				</tbody>
+			</table>
+		</div>
+	</section>
+</DragDropProvider>
 
 <style>
 	.sheet {
@@ -275,8 +273,9 @@
 		padding: 0;
 	}
 
-	td.drag-over {
-		background: #e6ebff;
+	td.drop-target {
+		background: #c7d2fe;
+		outline: 3px solid #6366f1;
 	}
 
 	.exam-chip {
@@ -288,6 +287,10 @@
 		border-radius: 0.35rem;
 		background: #f8fafb;
 		box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+	}
+
+	.exam-chip.dragging {
+		opacity: 0.5;
 	}
 
 	.exam-chip p {
