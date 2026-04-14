@@ -79,15 +79,13 @@ impl<'a> SchedulerBuilder<'a> {
     }
 
     /// Load and apply allowed/disallowed timeslot constraints per exam.
-    /// Only applies to first session (sequence=0) of each exam to avoid duplicates.
+    /// Applies to all sessions of each exam.
     pub fn apply_timeslot_restrictions_for_exams_from_db(
         &mut self,
         db: &mut SqliteConnection,
     ) -> Result<(), SolveError> {
         let rows = exam::table
-            .inner_join(
-                session::table.on(session::exam_id.eq(exam::id).and(session::sequence.eq(0))),
-            )
+            .inner_join(session::table.on(session::exam_id.eq(exam::id)))
             .left_join(
                 exam_timeslot_restriction::table
                     .on(exam_timeslot_restriction::exam_id.eq(exam::id)),
@@ -132,6 +130,36 @@ impl<'a> SchedulerBuilder<'a> {
                 None => {}
             }
         }
+        Ok(())
+    }
+
+    /// Load and apply consecutive constraints for multi-session exams.
+    /// For exams with multiple sessions (sequence > 0), ensures each session
+    /// starts immediately after the previous one.
+    pub fn apply_multi_session_constraints(
+        &mut self,
+        db: &mut SqliteConnection,
+    ) -> Result<(), SolveError> {
+        let rows = exam::table
+            .inner_join(session::table.on(session::exam_id.eq(exam::id)))
+            .select((exam::id, session::id))
+            .filter(exam::slots_required.gt(1))
+            .order((exam::id.asc(), session::sequence.asc()))
+            .load_iter::<(i32, SessionId), _>(db)?;
+
+        let mut exam_sessions: HashMap<i32, Vec<SessionId>> = HashMap::new();
+        for row in rows {
+            let (exam_id, session_id) = row?;
+            // Since the sequence is always in order, we can push directly
+            exam_sessions.entry(exam_id).or_default().push(session_id);
+        }
+
+        for sessions in exam_sessions.values() {
+            for (&first, &second) in sessions.iter().tuple_windows() {
+                self.scheduler.require_consecutive(first, second);
+            }
+        }
+
         Ok(())
     }
 

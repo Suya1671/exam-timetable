@@ -274,6 +274,25 @@ impl ExamScheduler {
         );
     }
 
+    /// Require the second session to run immediately after the first session (timeslot + 1).
+    pub fn require_consecutive(
+        &mut self,
+        first_session_id: SessionId,
+        second_session_id: SessionId,
+    ) {
+        let first = self.assignment.get(&first_session_id).unwrap();
+        let second = self.assignment.get(&second_session_id).unwrap();
+
+        self.tracker.assert_hard(
+            &self.optimizer,
+            &(first + 1).eq(second),
+            ConstraintError::Consecutive {
+                first_session_id,
+                second_session_id,
+            },
+        );
+    }
+
     /// Add preferred timeslots for an exam with a certain priority
     ///
     /// # Params

@@ -537,6 +537,7 @@ pub fn solve_one(
     builder.apply_timeslot_restrictions_for_exams_from_db(db)?;
     builder.apply_subject_exam_distance_from_db(db)?;
     builder.apply_exam_constraints_from_db(db)?;
+    builder.apply_multi_session_constraints(db)?;
     builder.apply_minimize_exams_per_day(db)?;
 
     for (session_id, timeslot_id) in locked_assignments {
@@ -573,6 +574,7 @@ pub fn solve_with_locked_assignments(
     builder.apply_timeslot_restrictions_for_exams_from_db(db)?;
     builder.apply_subject_exam_distance_from_db(db)?;
     builder.apply_exam_constraints_from_db(db)?;
+    builder.apply_multi_session_constraints(db)?;
     builder.apply_minimize_exams_per_day(db)?;
 
     for (session_id, timeslot_id) in locked_assignments {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { db } from '$lib/db';
 	import { exam, examOrderConstraint, subject } from '$lib/db/schema';
-	import { asc, eq } from 'drizzle-orm';
+	import { and, asc, eq } from 'drizzle-orm';
 	import { Button, Card } from 'm3-svelte';
 	import { createForm } from '@tanstack/svelte-form';
 	import { pipe, string, nonEmpty } from 'valibot';
@@ -105,7 +105,11 @@
 
 	async function remove(exam1Id: number, exam2Id: number) {
 		if (!confirm('Delete this constraint?')) return;
-		await db.delete(examOrderConstraint).where(eq(examOrderConstraint.exam1Id, exam1Id));
+		await db
+			.delete(examOrderConstraint)
+			.where(
+				and(eq(examOrderConstraint.exam1Id, exam1Id), eq(examOrderConstraint.exam2Id, exam2Id))
+			);
 		constraints = loadConstraints();
 	}
 </script>
