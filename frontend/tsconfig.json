@@ -8,7 +8,6 @@
 		"noUncheckedIndexedAccess": true,
 		"useUnknownInCatchVariables": true,
 		"forceConsistentCasingInFileNames": true,
-		"exactOptionalPropertyTypes": true,
 		"resolveJsonModule": true,
 		"skipLibCheck": true,
 		"sourceMap": true,
