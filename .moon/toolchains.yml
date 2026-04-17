@@ -17,8 +17,8 @@ javascript:
   syncProjectWorkspaceDependencies: true
   syncPackageManagerField: true
 
-pnpm:
-  version: "10"
-
 node:
   version: '24'
+
+pnpm:
+  version: "10"

@@ -62,12 +62,6 @@ jobs:
             mold \
             clang
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
-        with:
-          cache: true
-          run_install: true
-
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
