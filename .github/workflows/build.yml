@@ -83,7 +83,7 @@ jobs:
           auto-install: true
 
       - name: Build Tauri app
-        run: pnpm moon run app:build -- ${{ matrix.args }}
+        run: pnpm moon run app:build-release -- ${{ matrix.args }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           READ_ONLY_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
