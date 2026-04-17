@@ -62,25 +62,25 @@ jobs:
             mold \
             clang
 
+      - name: Setup moon toolchain
+        uses: 'moonrepo/setup-toolchain@v0'
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
         with:
           cache: true
           run_install: true
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust
+        uses: moonrepo/setup-rust@v1
         with:
+          bins: cargo-nextest, cargo-hakari, cargo-llvm-cov, diesel_cli
+          cache-extra-identifier: ${{ matrix.build_name }}
+          cache-target: release
           targets: ${{ matrix.platform == 'macos-latest' &&
             'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-
-      - name: Setup moon toolchain
-        uses: 'moonrepo/setup-toolchain@v0'
-        with:
-          auto-install: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Tauri app
         run: pnpm moon run app:build-release -- ${{ matrix.args }}
