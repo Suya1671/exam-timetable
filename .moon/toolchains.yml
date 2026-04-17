@@ -1,13 +1,14 @@
 rust:
-  bins:
-    - cargo-nextest
-    - cargo-hakari
-    - cargo-llvm-cov
-    - diesel_cli
+    bins:
+        - cargo-nextest
+        - cargo-hakari
+        - cargo-llvm-cov
+        - diesel_cli
+        - cargo-deny
 
 javascript:
-  packageManager: 'pnpm'
-  syncProjectWorkspaceDependencies: true
+    packageManager: 'pnpm'
+    syncProjectWorkspaceDependencies: true
 
 node: {}
 

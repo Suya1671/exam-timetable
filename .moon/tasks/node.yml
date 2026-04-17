@@ -2,52 +2,52 @@
 # https://moonrepo.dev/docs/concepts/tasks#task-inheritance
 
 inheritedBy:
-  languages: ['javascript', 'typescript']
+    languages: ['javascript', 'typescript']
 
 fileGroups:
-  sources:
-    - "src/**/*"
-  configs:
-    - "package.json"
-    - "tsconfig.json"
-    - ".eslintrc*"
-    - "prettier.config.*"
-    - "/package.json"
-    - "/pnpm-lock.yaml"
-    - "/pnpm-workspace.yaml"
-  tests:
-    - "tests/**/*"
+    sources:
+        - "src/**/*"
+    configs:
+        - "package.json"
+        - "tsconfig.json"
+        - ".eslintrc*"
+        - "prettier.config.*"
+        - "/package.json"
+        - "/pnpm-lock.yaml"
+        - "/pnpm-workspace.yaml"
+    tests:
+        - "tests/**/*"
 
 tasks:
-  dev:
-    command: "pnpm dev"
-    preset: "server"
-    inputs:
-      - "@group(sources)"
-      - "@group(configs)"
+    dev:
+        command: "pnpm dev"
+        preset: "server"
+        inputs:
+            - "@group(sources)"
+            - "@group(configs)"
 
-  build:
-    command: "pnpm build"
-    inputs:
-      - "@group(sources)"
-      - "@group(configs)"
-    outputs:
-      - "build"
+    build:
+        command: "pnpm build"
+        inputs:
+            - "@group(sources)"
+            - "@group(configs)"
+        outputs:
+            - "build"
 
-  check:
-    command: "pnpm check"
-    inputs:
-      - "@group(sources)"
-      - "@group(configs)"
+    check:
+        command: "pnpm check"
+        inputs:
+            - "@group(sources)"
+            - "@group(configs)"
 
-  lint:
-    command: "pnpm lint"
-    inputs:
-      - "@group(sources)"
-      - "@group(configs)"
+    lint:
+        command: "eslint ."
+        inputs:
+            - "@group(sources)"
+            - "@group(configs)"
 
-  format:
-    command: "pnpm format"
-    inputs:
-      - "@group(sources)"
-      - "@group(configs)"
+    format:
+        command: "eslint . --fix"
+        inputs:
+            - "@group(sources)"
+            - "@group(configs)"

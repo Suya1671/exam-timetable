@@ -1,1 +1,1 @@
-import 'unplugin-icons/types/svelte';
+import 'unplugin-icons/types/svelte'

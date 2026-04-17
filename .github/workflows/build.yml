@@ -1,102 +1,102 @@
 name: Build
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: ubuntu-latest
-            build_name: linux
-            args: '--features gh-release'
-            artifact_path: target/release/bundle/**
-          - platform: macos-latest
-            build_name: macos-aarch64
-            args: '--target aarch64-apple-darwin --features gh-release'
-            artifact_path: target/aarch64-apple-darwin/release/bundle/**
-          - platform: macos-latest
-            build_name: macos-x86_64
-            args: '--target x86_64-apple-darwin --features gh-release'
-            artifact_path: target/x86_64-apple-darwin/release/bundle/**
-          - platform: windows-latest
-            build_name: windows
-            args: '--features vendored'
-            artifact_path: target/release/bundle/**
+    build:
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - platform: ubuntu-latest
+                      build_name: linux
+                      args: '--features gh-release'
+                      artifact_path: target/release/bundle/**
+                    - platform: macos-latest
+                      build_name: macos-aarch64
+                      args: '--target aarch64-apple-darwin --features gh-release'
+                      artifact_path: target/aarch64-apple-darwin/release/bundle/**
+                    - platform: macos-latest
+                      build_name: macos-x86_64
+                      args: '--target x86_64-apple-darwin --features gh-release'
+                      artifact_path: target/x86_64-apple-darwin/release/bundle/**
+                    - platform: windows-latest
+                      build_name: windows
+                      args: '--features vendored'
+                      artifact_path: target/release/bundle/**
 
-    runs-on: ${{ matrix.platform }}
+        runs-on: ${{ matrix.platform }}
 
-    steps:
-      - uses: actions/checkout@v6
+        steps:
+            - uses: actions/checkout@v6
 
-      - name: Install macOS dependencies
-        if: matrix.platform == 'macos-latest'
-        run: xcode-select --install || true
+            - name: Install macOS dependencies
+              if: matrix.platform == 'macos-latest'
+              run: xcode-select --install || true
 
-      - name: Install Ubuntu dependencies
-        if: matrix.platform == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            build-essential \
-            curl \
-            wget \
-            file \
-            libssl-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            libsqlite3-dev \
-            pkg-config \
-            cmake \
-            mold \
-            clang
+            - name: Install Ubuntu dependencies
+              if: matrix.platform == 'ubuntu-latest'
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y \
+                    libwebkit2gtk-4.1-dev \
+                    build-essential \
+                    curl \
+                    wget \
+                    file \
+                    libssl-dev \
+                    libayatana-appindicator3-dev \
+                    librsvg2-dev \
+                    patchelf \
+                    libsqlite3-dev \
+                    pkg-config \
+                    cmake \
+                    mold \
+                    clang
 
-      - name: Setup moon toolchain
-        uses: 'moonrepo/setup-toolchain@v0'
+            - name: Setup moon toolchain
+              uses: 'moonrepo/setup-toolchain@v0'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
-        with:
-          cache: true
-          run_install: true
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v5
+              with:
+                  cache: true
+                  run_install: true
 
-      - name: Setup Rust
-        uses: moonrepo/setup-rust@v1
-        with:
-          bins: cargo-nextest, cargo-hakari, cargo-llvm-cov, diesel_cli
-          cache-extra-identifier: ${{ matrix.build_name }}
-          cache-target: release
-          targets: ${{ matrix.platform == 'macos-latest' &&
-            'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Setup Rust
+              uses: moonrepo/setup-rust@v1
+              with:
+                  bins: cargo-nextest, cargo-hakari, cargo-llvm-cov, diesel_cli, cargo-deny
+                  cache-extra-identifier: ${{ matrix.build_name }}
+                  cache-target: release
+                  targets: ${{ matrix.platform == 'macos-latest' &&
+                      'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Tauri app
-        run: pnpm moon run app:build-release -- ${{ matrix.args }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          READ_ONLY_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Build Tauri app
+              run: pnpm moon run app:build-release -- ${{ matrix.args }}
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  READ_ONLY_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Report run results
-        uses: 'moonrepo/run-report-action@v1'
-        if: success() || failure()
-        with:
-          access-token: ${{ secrets.GITHUB_TOKEN }}
+            - name: Report run results
+              uses: 'moonrepo/run-report-action@v1'
+              if: success() || failure()
+              with:
+                  access-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: exam-scheduler-${{ matrix.build_name }}
-          path: ${{ matrix.artifact_path || 'target/release/bundle/**' }}
-          retention-days: 5
+            - name: Upload artifacts
+              uses: actions/upload-artifact@v7
+              with:
+                  name: exam-scheduler-${{ matrix.build_name }}
+                  path: ${{ matrix.artifact_path || 'target/release/bundle/**' }}
+                  retention-days: 5
