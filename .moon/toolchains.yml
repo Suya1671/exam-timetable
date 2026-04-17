@@ -1,7 +1,24 @@
 rust:
   syncToolchainConfig: true
+  components:
+    - llvm-tools-preview
+    - rustfmt
+    - clippy
+    - rust-analyzer
+    - rust-src
   bins:
     - cargo-nextest
     - cargo-hakari
     - cargo-llvm-cov
     - diesel_cli
+
+javascript:
+  packageManager: 'pnpm'
+  syncProjectWorkspaceDependencies: true
+  syncPackageManagerField: true
+
+pnpm:
+  version: "10"
+
+node:
+  version: '24'
