@@ -39,10 +39,11 @@ tasks:
             - "@group(sources)"
             - "@group(configs)"
         deps:
+            - check
             - ^:lint
 
     test:
-        command: "cargo nextest run"
+        command: "cargo nextest run --no-tests warn"
         inputs:
             - "@group(sources)"
             - "@group(configs)"

@@ -74,8 +74,6 @@ Run from repo root unless noted.
 
 ### Frontend (TypeScript/Svelte)
 
-- Prettier config enforces tabs, single quotes, no trailing commas, print width 100.
-- ESLint + `typescript-eslint` + `eslint-plugin-svelte` are enabled.
 - Prefer explicit, narrow types for form values and data transforms.
 - Use existing alias conventions (`$lib`, route-local `./data`, `./forms`).
 - Keep component imports stable and remove unused imports aggressively.

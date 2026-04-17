@@ -18,103 +18,139 @@ ignored = ["either", "form_urlencoded", "libc", "log", "memchr", "percent-encodi
 
 ### BEGIN HAKARI SECTION
 [dependencies]
+deranged = { version = "0.5", features = ["powerfmt", "serde"] }
 either = { version = "1", features = ["use_std"] }
+flate2 = { version = "1", features = ["zlib-rs"] }
+indexmap = { version = "2", features = ["serde"] }
+log = { version = "0.4", default-features = false, features = ["std"] }
+miniz_oxide = { version = "0.8", features = ["simd"] }
 percent-encoding = { version = "2" }
+phf_shared-594e8ee84c453af0 = { package = "phf_shared", version = "0.13", default-features = false, features = ["std"] }
 phf_shared-93f6ce9d446188ac = { package = "phf_shared", version = "0.10", default-features = false, features = ["std"] }
 phf_shared-a6292c17cd707f01 = { package = "phf_shared", version = "0.11" }
 proc-macro2 = { version = "1", features = ["span-locations"] }
+rand = { version = "0.8", features = ["small_rng"] }
+rand_chacha = { version = "0.3" }
+rand_core = { version = "0.6", default-features = false, features = ["std"] }
+regex-automata = { version = "0.4", default-features = false, features = ["dfa", "hybrid", "meta", "nfa", "perf", "std", "unicode"] }
 schemars = { version = "0.8", features = ["preserve_order", "url", "uuid1"] }
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["alloc", "derive", "rc"] }
 serde_core = { version = "1", features = ["alloc", "rc"] }
 serde_json = { version = "1", features = ["alloc", "raw_value", "unbounded_depth"] }
-specta = { version = "2.0.0-rc.22", features = ["derive", "export", "function"] }
+simd-adler32 = { version = "0.3" }
+smallvec = { version = "1", default-features = false, features = ["const_new", "union", "write"] }
+specta = { version = "2.0.0-rc.22", features = ["derive", "export", "function", "time"] }
 stable_deref_trait = { version = "1" }
 tauri-utils = { version = "2", default-features = false, features = ["build", "compression", "resources"] }
+time = { version = "0.3", features = ["formatting", "macros", "parsing", "serde"] }
+unic-langid-impl = { version = "0.9", default-features = false, features = ["serde"] }
 uuid = { version = "1", features = ["serde", "v4"] }
+yoke = { version = "0.8", features = ["derive"] }
+zerocopy = { version = "0.8", default-features = false, features = ["derive", "simd"] }
+zerofrom = { version = "0.1", default-features = false, features = ["alloc", "derive"] }
 
 [build-dependencies]
 either = { version = "1", features = ["use_std"] }
+flate2 = { version = "1", features = ["zlib-rs"] }
+indexmap = { version = "2", features = ["serde"] }
+log = { version = "0.4", default-features = false, features = ["std"] }
+miniz_oxide = { version = "0.8", features = ["simd"] }
 percent-encoding = { version = "2" }
+phf_shared-594e8ee84c453af0 = { package = "phf_shared", version = "0.13", default-features = false, features = ["std"] }
 phf_shared-93f6ce9d446188ac = { package = "phf_shared", version = "0.10", default-features = false, features = ["std"] }
 phf_shared-a6292c17cd707f01 = { package = "phf_shared", version = "0.11" }
 proc-macro2 = { version = "1", features = ["span-locations"] }
+rand = { version = "0.8", features = ["small_rng"] }
+rand_chacha = { version = "0.3" }
+rand_core = { version = "0.6", default-features = false, features = ["std"] }
+regex-automata = { version = "0.4", default-features = false, features = ["dfa", "hybrid", "meta", "nfa", "perf", "std", "unicode"] }
 schemars = { version = "0.8", features = ["preserve_order", "url", "uuid1"] }
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["alloc", "derive", "rc"] }
 serde_core = { version = "1", features = ["alloc", "rc"] }
 serde_json = { version = "1", features = ["alloc", "raw_value", "unbounded_depth"] }
+simd-adler32 = { version = "0.3" }
+smallvec = { version = "1", default-features = false, features = ["const_new", "union", "write"] }
 specta-macros = { version = "2.0.0-rc.18", features = ["DO_NOT_USE_export", "DO_NOT_USE_function"] }
 stable_deref_trait = { version = "1" }
 syn = { version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 tauri-utils = { version = "2", default-features = false, features = ["build", "compression", "resources"] }
+unic-langid-impl = { version = "0.9", default-features = false, features = ["serde"] }
 uuid = { version = "1", features = ["serde", "v4"] }
+yoke = { version = "0.8", features = ["derive"] }
+zerocopy = { version = "0.8", default-features = false, features = ["derive", "simd"] }
+zerofrom = { version = "0.1", default-features = false, features = ["alloc", "derive"] }
 
 [target.x86_64-unknown-linux-gnu.dependencies]
+fastrand = { version = "2" }
 libc = { version = "0.2" }
 libsqlite3-sys = { version = "0.30", features = ["bundled"] }
-smallvec = { version = "1", default-features = false, features = ["const_new", "union"] }
 syn = { version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
+toml = { version = "0.8", default-features = false, features = ["display", "parse"] }
 toml_parser = { version = "1" }
 winnow-ca01ad9e24f5d932 = { package = "winnow", version = "0.7" }
 winnow-dff4ba8e3ae991db = { package = "winnow", version = "1" }
 
 [target.x86_64-unknown-linux-gnu.build-dependencies]
+fastrand = { version = "2" }
 libc = { version = "0.2" }
-smallvec = { version = "1", default-features = false, features = ["const_new", "union"] }
+toml = { version = "0.8", default-features = false, features = ["display", "parse"] }
 toml_parser = { version = "1" }
 winnow-ca01ad9e24f5d932 = { package = "winnow", version = "0.7" }
 winnow-dff4ba8e3ae991db = { package = "winnow", version = "1" }
 
 [target.aarch64-unknown-linux-gnu.dependencies]
+fastrand = { version = "2" }
 libc = { version = "0.2" }
 libsqlite3-sys = { version = "0.30", features = ["bundled"] }
-smallvec = { version = "1", default-features = false, features = ["const_new", "union"] }
 syn = { version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
+toml = { version = "0.8", default-features = false, features = ["display", "parse"] }
 toml_parser = { version = "1" }
 winnow-ca01ad9e24f5d932 = { package = "winnow", version = "0.7" }
 winnow-dff4ba8e3ae991db = { package = "winnow", version = "1" }
 
 [target.aarch64-unknown-linux-gnu.build-dependencies]
+fastrand = { version = "2" }
 libc = { version = "0.2" }
-smallvec = { version = "1", default-features = false, features = ["const_new", "union"] }
+toml = { version = "0.8", default-features = false, features = ["display", "parse"] }
 toml_parser = { version = "1" }
 winnow-ca01ad9e24f5d932 = { package = "winnow", version = "0.7" }
 winnow-dff4ba8e3ae991db = { package = "winnow", version = "1" }
 
 [target.x86_64-apple-darwin.dependencies]
-deranged = { version = "0.5", features = ["powerfmt", "serde"] }
 libc = { version = "0.2" }
 libsqlite3-sys = { version = "0.30", features = ["bundled"] }
 memchr = { version = "2" }
-time = { version = "0.3", features = ["formatting", "macros", "parsing", "serde"] }
+quick-xml = { version = "0.38", features = ["overlapped-lists", "serialize"] }
 
 [target.x86_64-apple-darwin.build-dependencies]
 deranged = { version = "0.5", features = ["powerfmt", "serde"] }
 libc = { version = "0.2" }
 memchr = { version = "2" }
+quick-xml = { version = "0.38", features = ["overlapped-lists", "serialize"] }
 time = { version = "0.3", features = ["formatting", "macros", "parsing", "serde"] }
 
 [target.aarch64-apple-darwin.dependencies]
-deranged = { version = "0.5", features = ["powerfmt", "serde"] }
 libc = { version = "0.2" }
 libsqlite3-sys = { version = "0.30", features = ["bundled"] }
 memchr = { version = "2" }
-time = { version = "0.3", features = ["formatting", "macros", "parsing", "serde"] }
+quick-xml = { version = "0.38", features = ["overlapped-lists", "serialize"] }
 
 [target.aarch64-apple-darwin.build-dependencies]
 deranged = { version = "0.5", features = ["powerfmt", "serde"] }
 libc = { version = "0.2" }
 memchr = { version = "2" }
+quick-xml = { version = "0.38", features = ["overlapped-lists", "serialize"] }
 time = { version = "0.3", features = ["formatting", "macros", "parsing", "serde"] }
 
 [target.x86_64-pc-windows-msvc.dependencies]
 libsqlite3-sys = { version = "0.30", features = ["bundled"] }
-windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Diagnostics_Debug", "Win32_System_LibraryLoader", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Time", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Diagnostics_Debug", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_System_Time", "Win32_UI_WindowsAndMessaging"] }
 windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Globalization", "Win32_Graphics_Gdi", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_IO", "Win32_System_Pipes", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 
 [target.x86_64-pc-windows-msvc.build-dependencies]
-windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Diagnostics_Debug", "Win32_System_LibraryLoader", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Time", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Diagnostics_Debug", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_System_Time", "Win32_UI_WindowsAndMessaging"] }
 windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Globalization", "Win32_Graphics_Gdi", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_IO", "Win32_System_Pipes", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 
 ### END HAKARI SECTION

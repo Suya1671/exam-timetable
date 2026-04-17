@@ -16,8 +16,6 @@ fileGroups:
         - svelte.config.js
         - drizzle.config.js
         - eslint.config.js
-        - .prettierrc
-        - .prettierignore
 
 tasks:
     build:
