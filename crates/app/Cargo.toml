@@ -19,16 +19,15 @@ crate-type = ["cdylib", "rlib", "staticlib"]
 name = "app_lib"
 
 [dependencies]
-backend = { path = "../../crates/backend", version = "0.1.0" }
-comemo = "0.4.0"
+backend = { path = "../backend", version = "0.1.0" }
 diesel = { version = "2.3.7", features = [
   "returning_clauses_for_sqlite_3_35",
   "sqlite",
   "time",
 ] }
 diesel_migrations = { version = "2.3.1", features = ["sqlite"] }
-entity = { path = "../../crates/entity", version = "0.1.0" }
-hack = { path = "../../crates/hack", version = "0.1" }
+entity = { path = "../entity", version = "0.1.0" }
+hack = { path = "../hack", version = "0.1" }
 rusqlite = { version = "0.32.1", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0.139"

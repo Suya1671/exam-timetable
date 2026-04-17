@@ -1,0 +1,10 @@
+# This is a hakari-managed dependency workspace.
+# It is not intended to be built or tested directly.
+# Used by other crates in the workspace.
+
+language: "rust"
+project:
+  name: "hack"
+  description: "Hakari-managed workspace dependencies"
+stack: "backend"
+layer: "configuration"

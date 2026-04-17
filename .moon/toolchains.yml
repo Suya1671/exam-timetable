@@ -1,0 +1,7 @@
+rust:
+  syncToolchainConfig: true
+  bins:
+    - cargo-nextest
+    - cargo-hakari
+    - cargo-llvm-cov
+    - diesel_cli

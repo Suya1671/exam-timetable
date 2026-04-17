@@ -5,3 +5,8 @@ result*
 /**/*.profraw
 /**/*.profdata
 db.sqlite3
+node_modules
+
+# moon
+.moon/cache
+.moon/docker

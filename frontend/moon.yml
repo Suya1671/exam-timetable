@@ -1,0 +1,43 @@
+language: "typescript"
+project:
+  name: "frontend"
+  description: "SvelteKit frontend application"
+stack: "frontend"
+layer: "library"
+
+fileGroups:
+  sources:
+    - "src/**/*"
+    - "static/**/*"
+  configs:
+    - "package.json"
+    - "tsconfig.json"
+    - "vite.config.js"
+    - "svelte.config.js"
+    - "drizzle.config.ts"
+    - "eslint.config.js"
+    - ".prettierrc"
+    - ".prettierignore"
+
+tasks:
+  build:
+    deps:
+      - sync
+    outputs:
+      - "build/"
+      - ".svelte-kit/"
+  sync:
+    command: "pnpm sync"
+    inputs:
+      - "@group(sources)"
+      - "@group(configs)"
+    outputs:
+      - ".svelte-kit/"
+  db-pull:
+    command: "pnpm db:pull"
+    inputs:
+      - "@group(sources)"
+      - "drizzle.config.ts"
+      - "package.json"
+    outputs:
+      - "src/lib/db/schema.ts"

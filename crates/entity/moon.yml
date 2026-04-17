@@ -1,0 +1,9 @@
+language: "rust"
+project:
+  name: "entity"
+  description: "Diesel-generated database entities"
+stack: "backend"
+layer: "library"
+
+dependsOn:
+  - "hack"

@@ -4,7 +4,7 @@ resolver = "2"
 # paths because the flake.nix is written in a way such that top-level members
 # (`my-cli` and `my-server`) are built as different derivations which avoid being
 # rebuilt if the other package's sources change.
-members = ["crates/*", "frontend/app"]
+members = ["crates/*"]
 
 [workspace.package]
 version = "0.1.0"

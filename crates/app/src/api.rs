@@ -200,7 +200,7 @@ fn query_database_batch(
     Ok(results)
 }
 
-#[taurpc::procedures(export_to = "../src/lib/backend.ts")]
+#[taurpc::procedures(export_to = "../../frontend/src/lib/backend.ts")]
 pub trait Api {
     async fn sql<R: Runtime>(
         app_handle: AppHandle<R>,

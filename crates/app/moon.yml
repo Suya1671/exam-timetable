@@ -1,0 +1,49 @@
+language: "rust"
+project:
+  name: "app"
+  description: "Tauri desktop application"
+stack: "frontend"
+layer: "application"
+
+dependsOn:
+  - "frontend"
+  - "backend"
+  - "entity"
+  - "hack"
+
+fileGroups:
+  sources:
+    - "src/**/*"
+    - "icons/**/*"
+    - "capabilities/**/*"
+    - "gen/**/*"
+    - "/migrations/**/*"
+    - "build.rs"
+  configs:
+    - "Cargo.toml"
+    - "/Cargo.lock"
+    - "tauri.conf.json"
+
+tasks:
+  dev:
+    command: "pnpm tauri dev"
+    preset: "server"
+    deps:
+      - "frontend:dev"
+    inputs:
+      - "@group(sources)"
+      - "@group(configs)"
+    options:
+      mergeArgs: replace
+
+  build:
+    command: "pnpm tauri build --debug"
+    options:
+      mergeArgs: replace
+
+  build-release:
+    command: "pnpm tauri build"
+    deps:
+      - frontend:build
+    options:
+      mergeArgs: replace

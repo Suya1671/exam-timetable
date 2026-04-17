@@ -1,0 +1,64 @@
+# Global Rust tasks inherited by all Rust projects
+# https://moonrepo.dev/docs/concepts/tasks#task-inheritance
+
+inheritedBy:
+  language: 'rust'
+
+fileGroups:
+  sources:
+    - "src/**/*.rs"
+    - "tests/**/*.rs"
+  configs:
+    - "Cargo.toml"
+    - "/Cargo.lock"
+
+tasks:
+  check:
+    command: "cargo check"
+    inputs:
+      - "@group(sources)"
+      - "@group(configs)"
+    deps:
+      - ^:check
+
+  fmt:
+    command: "cargo fmt"
+    inputs:
+      - "@group(sources)"
+      - "@group(configs)"
+
+  fmt-check:
+    command: "cargo fmt --check"
+    inputs:
+      - "@group(sources)"
+      - "@group(configs)"
+
+  lint:
+    command: "cargo clippy --all-targets --all-features"
+    inputs:
+      - "@group(sources)"
+      - "@group(configs)"
+    deps:
+      - ^:lint
+
+  test:
+    command: "cargo nextest run"
+    inputs:
+      - "@group(sources)"
+      - "@group(configs)"
+
+  build:
+    command: "cargo build"
+    inputs:
+      - "@group(sources)"
+      - "@group(configs)"
+    deps:
+      - ^:build
+
+  build-release:
+    command: "cargo build --release"
+    inputs:
+      - "@group(sources)"
+      - "@group(configs)"
+    deps:
+      - ^:build-release
