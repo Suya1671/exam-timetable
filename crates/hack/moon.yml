@@ -4,7 +4,7 @@
 
 language: "rust"
 project:
-  name: "hack"
-  description: "Hakari-managed workspace dependencies"
+    name: "hack"
+    description: "Hakari-managed workspace dependencies"
 stack: "backend"
 layer: "configuration"

@@ -1,10 +1,6 @@
 language: "rust"
 project:
-  name: "solver"
-  description: "Z3-based exam timetabling solver"
+    name: "solver"
+    description: "Z3-based exam timetabling solver"
 stack: "backend"
 layer: "library"
-
-dependsOn:
-  - "entity"
-  - "hack"

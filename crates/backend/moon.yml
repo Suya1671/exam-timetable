@@ -1,11 +1,6 @@
 language: "rust"
 project:
-  name: "backend"
-  description: "Database access and solver integration layer"
+    name: "backend"
+    description: "Database access and solver integration layer"
 stack: "backend"
 layer: "library"
-
-dependsOn:
-  - "entity"
-  - "solver"
-  - "hack"
