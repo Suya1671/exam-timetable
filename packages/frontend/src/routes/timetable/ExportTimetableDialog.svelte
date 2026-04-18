@@ -1,7 +1,7 @@
 <script lang='ts'>
-    import type { TimetableDay } from '$lib/backend'
-    import { createTauRPCProxy } from '$lib/backend'
+    import type { TimetableDay } from '@exam-timetable/tauri-api'
     import EnhancedTextInput from '$lib/EnhancedTextInput.svelte'
+    import { createTauRPCProxy } from '@exam-timetable/tauri-api'
     import { createForm } from '@tanstack/svelte-form'
     import { Button, Dialog } from 'm3-svelte'
     import { nonEmpty, pipe, string } from 'valibot'

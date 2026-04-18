@@ -1,0 +1,13 @@
+language: typescript
+project:
+    name: tauri-api
+    description: Tauri API for the exam timetable project
+stack: frontend
+layer: library
+
+fileGroups:
+    sources:
+        - index.ts
+        - generated.ts
+    configs:
+        - package.json

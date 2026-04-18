@@ -1,5 +1,5 @@
 <script lang='ts'>
-    import type { TimetableDay } from '$lib/backend'
+    import type { TimetableDay } from '@exam-timetable/tauri-api'
 
     import type { ComponentProps } from 'svelte'
     import { RestrictToVerticalAxis } from '@dnd-kit/abstract/modifiers'

@@ -40,6 +40,8 @@ tasks:
         inputs:
             - "@group(sources)"
             - "@group(configs)"
+        dependsOn:
+            - typecheck
 
     lint:
         command: "eslint ."
@@ -52,3 +54,18 @@ tasks:
         inputs:
             - "@group(sources)"
             - "@group(configs)"
+
+    typecheck:
+        command:
+            - 'tsgo'
+            # Use incremental builds with project references
+            - '--build'
+            # Always use pretty output
+            - '--pretty'
+            # Use verbose logging to see affected projects
+            - '--verbose'
+        inputs:
+            - "@group(sources)"
+            - "@group(configs)"
+        dependsOn:
+            - ^:typecheck

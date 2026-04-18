@@ -3,9 +3,11 @@
     "compilerOptions": {
         "emitDeclarationOnly": true,
         "composite": true,
-        "outDir": "../../.moon/cache/types/packages/eslint-config"
+        "outDir": "../../.moon/cache/types/packages/tauri-api"
     },
     "include": [
-        "index.ts"
-    ]
+        "index.ts",
+        "generated.ts"
+    ],
+    "references": []
 }

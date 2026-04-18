@@ -9,6 +9,7 @@ projects:
     solver: "crates/solver"
     eslint-config: "packages/eslint-config"
     frontend: "packages/frontend"
+    tauri-api: "packages/tauri-api"
 
 # Configures the version control system (VCS). Also known as
 # source code management (SCM).

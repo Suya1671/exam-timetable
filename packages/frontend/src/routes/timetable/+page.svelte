@@ -8,11 +8,11 @@
         TimeslotId,
         TimetableDay,
         TimetableSession,
-    } from '$lib/backend'
-    import { createTauRPCProxy } from '$lib/backend'
+    } from '@exam-timetable/tauri-api'
     import { dateKeyUTC } from '$lib/dateKeys'
     import { db } from '$lib/db'
     import { sessionTimeConfig, timetables, timetableSlots } from '$lib/db/schema'
+    import { createTauRPCProxy } from '@exam-timetable/tauri-api'
     import { Temporal } from '@js-temporal/polyfill'
     import { eq } from 'drizzle-orm'
     import { Button } from 'm3-svelte'

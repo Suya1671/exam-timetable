@@ -8,18 +8,18 @@
         "strict": true,
         "noUncheckedIndexedAccess": true,
         "useUnknownInCatchVariables": true,
+        "outDir": "../../.moon/cache/types/packages/frontend",
         "sourceMap": true,
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
-        "skipLibCheck": true,
-        "outDir": "../../.moon/cache/types/packages/frontend"
+        "skipLibCheck": true
     },
     "references": [
         {
             "path": "../eslint-config"
+        },
+        {
+            "path": "../tauri-api"
         }
-    ],
-    "include": [
-        "../eslint-config/**/*"
     ]
 }

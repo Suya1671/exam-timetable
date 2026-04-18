@@ -15,5 +15,8 @@
     "eslint": "^10.2.1",
     "globals": "^17.5.0",
     "typescript-eslint": "^8.58.2"
+  },
+  "devDependencies": {
+    "@typescript/native-preview": "7.0.0-dev.20260417.1"
   }
 }

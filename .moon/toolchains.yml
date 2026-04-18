@@ -12,8 +12,6 @@ javascript:
 
 typescript:
     createMissingConfig: true
-    includeProjectReferenceSources: true
-    includeSharedTypes: true
     routeOutDirToCache: true
     syncProjectReferences: true
 
