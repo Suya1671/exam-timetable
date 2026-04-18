@@ -19,11 +19,23 @@ fileGroups:
 
 tasks:
     build:
+        command: vite build
         deps:
             - sync
         outputs:
             - build/
             - .svelte-kit/
+
+    dev:
+        command: vite dev
+
+    preview:
+        command: vite preview
+
+    check:
+        command: svelte-check --tsconfig ./tsconfig.json --incremental --tsgo
+        deps:
+            - sync
 
     sync:
         command: svelte-kit sync
@@ -35,6 +47,7 @@ tasks:
 
     db-pull:
         command: drizzle-kit pull --config drizzle.config.js
+        preset: utility
         inputs:
             - '@group(sources)'
             - drizzle.config.js

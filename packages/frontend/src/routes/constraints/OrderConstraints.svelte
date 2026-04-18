@@ -1,8 +1,8 @@
 <script lang='ts'>
     import { db } from '$lib/db'
     import { exam, examOrderConstraint, subject } from '$lib/db/schema'
-    import EnhancedSelect from '$lib/EnhancedSelect.svelte'
     import { formatExamLabel } from '$lib/examDisplay'
+    import { EnhancedSelect } from '@exam-timetable/ui'
     import { createForm } from '@tanstack/svelte-form'
     import { and, asc, eq } from 'drizzle-orm'
     import { alias } from 'drizzle-orm/sqlite-core'

@@ -1,6 +1,5 @@
 # Exam Timetable
 
-**WIP. Mostly personal project. Some bits (A lot of bits, currentlty) are messy and partially vibe-coded/AI generated with little review other than "yeah that code is _fine_ and it works". I am slowly reviewing of all AI-marked areas. I am not happy with the code quality. Bleh :p**
 
 This repository contains a Rust workspace for building an exam scheduling system backed by Z3, along with a sveltekit frontend.
 
@@ -46,14 +45,21 @@ Coverage helpers are documented in `docs/coverage.md`.
 ## TODOs
 - [ ] Better use of the Intl and Temporal APIs (they are amazing aaaa)
 - [ ] Fix the severe lack of actual reactivity (thanks Codex for being react-brained. bleh. The code is ugly and I apologise for anyone who looks at it right now)
-- [ ] Make the UI for saving/loading timetables better
-  - [ ] Actually make it make sense
-  - [ ] Make resolving work correctly
+- [ ] Make the UI for timetables better
+  - [ ] Proper saving/loading
+    - [ ] Custom Save vs. Save As
+    - [ ] Notification when a save happened successfully
+  - [ ] Store custom timetable data into the database, rather than in the export dialog
   - [ ] Categorise the UI better
-  - [ ] Custom Save vs. Save As
+  - [ ] Solver progress/explanation
+  - [ ] Ability to check a timetable
+  - [ ] Clearer resolve behaviour
   - [ ] Better Dialogs
+  - [ ] Confirmation when a user exports
 
 ## AI usage and contribution policy
+
+**This is a currently WIP, Mostly personal project, and some bits (A lot of bits, currentlty) are messy and AI generated with little review other than "yeah that code is _fine_ and it works". I am slowly reviewing of all AI-marked areas :p. I do not approve of vibe coding (i.e. LLM generated code without proper review), but LLMs are a useful tool to get stuff done a bit faster.**
 
 AI was used in this repository. All AI-generated contributions that have not been modified/fully reviewed by
 persons are marked with an explicit notice (for example `/// AI-generated.` in Rust doc comments, or `/** AI-generated */` in JSDoc).

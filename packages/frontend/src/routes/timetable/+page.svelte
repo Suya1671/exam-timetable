@@ -9,10 +9,10 @@
         TimetableDay,
         TimetableSession,
     } from '@exam-timetable/tauri-api'
-    import { dateKeyUTC } from '$lib/dateKeys'
     import { db } from '$lib/db'
     import { sessionTimeConfig, timetables, timetableSlots } from '$lib/db/schema'
     import { createTauRPCProxy } from '@exam-timetable/tauri-api'
+    import { dateUtils } from '@exam-timetable/ui'
     import { Temporal } from '@js-temporal/polyfill'
     import { eq } from 'drizzle-orm'
     import { Button } from 'm3-svelte'
@@ -152,7 +152,7 @@
         const byDate = new SvelteMap<string, TimetableDay>()
 
         for (const timeslot of initialTimeslots) {
-            const key = dateKeyUTC(timeslot.date)
+            const key = dateUtils.dateKeyUTC(timeslot.date)
             const weekNumber = getWeekNumber(timeslot.date) - firstWeek + 1
             const sessionTime = sessionTimeBySlot[timeslot.slot]
             if (!sessionTime)

@@ -10,6 +10,8 @@
 
     import { onMount } from 'svelte'
     import '../app.css'
+    import '@exam-timetable/ui/theme.css'
+    import '@exam-timetable/ui/reset.css'
 
     const { children } = $props()
 

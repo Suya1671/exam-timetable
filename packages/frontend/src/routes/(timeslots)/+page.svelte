@@ -1,8 +1,7 @@
 <script lang='ts'>
-    import { dateKeyUTC } from '$lib/dateKeys'
     import { db } from '$lib/db'
     import { sessionTimeConfig, timeslot } from '$lib/db/schema'
-    import EnhancedDateField from '$lib/EnhancedDatePicker.svelte'
+    import { dateUtils, EnhancedDateField } from '@exam-timetable/ui'
     import { Temporal } from '@js-temporal/polyfill'
     import SaveIcon from '@ktibow/iconset-material-symbols/save-rounded'
     import { createForm } from '@tanstack/svelte-form'
@@ -155,7 +154,7 @@
         const map = new SvelteMap<string, { date: Date, slots: (typeof allTimeslots)[number][] }>()
 
         for (const row of allTimeslots) {
-            const key = dateKeyUTC(row.date)
+            const key = dateUtils.dateKeyUTC(row.date)
             const existing = map.get(key)
             if (existing) {
                 existing.slots.push(row)
@@ -241,7 +240,7 @@
                 date,
                 dayNumber: date.getUTCDate(),
                 inMonth: date.getUTCMonth() === focusedMonth,
-                slots: byDate.get(dateKeyUTC(date))?.slots ?? [],
+                slots: byDate.get(dateUtils.dateKeyUTC(date))?.slots ?? [],
             }
         })
     })
@@ -254,8 +253,8 @@
 
     /** AI-generated (GPT-5.3-codex). */
     async function removeDate(date: Date) {
-        const key = dateKeyUTC(date)
-        const ids = allTimeslots.filter(row => dateKeyUTC(row.date) === key).map(row => row.id)
+        const key = dateUtils.dateKeyUTC(date)
+        const ids = allTimeslots.filter(row => dateUtils.dateKeyUTC(row.date) === key).map(row => row.id)
         if (ids.length === 0)
             return
 
@@ -280,7 +279,7 @@
 
     /** AI-generated (GPT-5.3-codex). */
     async function addSlotForDate(date: Date, slotNumber: number) {
-        const key = dateKeyUTC(date)
+        const key = dateUtils.dateKeyUTC(date)
         const slots = byDate.get(key)?.slots ?? []
         if (dayHasSlot(slots, slotNumber))
             return

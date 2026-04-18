@@ -1,8 +1,7 @@
 <script lang='ts'>
     import { db } from '$lib/db'
     import { enrolledStudent, student, subject, subjectGrade } from '$lib/db/schema'
-    import EnhancedSelect from '$lib/EnhancedSelect.svelte'
-    import EnhancedTextInput from '$lib/EnhancedTextInput.svelte'
+    import { EnhancedSelect, EnhancedTextInput } from '@exam-timetable/ui'
     import { createForm } from '@tanstack/svelte-form'
     import { eq, or } from 'drizzle-orm'
     import { Button, Dialog, Divider, ListItem, snackbar } from 'm3-svelte'

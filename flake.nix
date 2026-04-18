@@ -96,6 +96,8 @@
           shellHook = ''
             export XDG_DATA_DIRS="$GSETTINGS_SCHEMAS_PATH"
             export LD_LIBRARY_PATH="${pkgs.webkitgtk_4_1}/lib:$LD_LIBRARY_PATH"
+            export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
+            export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
           '';
 
           packages = with pkgs; [
@@ -104,6 +106,7 @@
             cargo-tauri
             tombi
             nodejs
+            playwright-driver.browsers
             pnpm
             diesel-cli
             clang

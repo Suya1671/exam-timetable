@@ -1,24 +1,26 @@
 {
-  "name": "@exam-timetable/tauri-api",
-  "version": "1.0.0",
-  "description": "Tauri API library generated from app",
-  "homepage": "https://github.com/Suya1671/exam-timetable#readme",
-  "bugs": {
-    "url": "https://github.com/Suya1671/exam-timetable/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Suya1671/exam-timetable.git"
-  },
-  "license": "MIT",
-  "author": "Suya1671",
-  "type": "module",
-  "main": "index.ts",
-  "dependencies": {
-    "@tauri-apps/api": "^2.10.1",
-    "taurpc": "^1.8.1"
-  },
-  "devDependencies": {
-    "@typescript/native-preview": "7.0.0-dev.20260417.1"
-  }
+    "name": "@exam-timetable/tauri-api",
+    "type": "module",
+    "version": "1.0.0",
+    "description": "Tauri API library generated from app",
+    "author": "Suya1671",
+    "license": "MIT",
+    "homepage": "https://github.com/Suya1671/exam-timetable#readme",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Suya1671/exam-timetable.git"
+    },
+    "bugs": {
+        "url": "https://github.com/Suya1671/exam-timetable/issues"
+    },
+    "main": "index.ts",
+    "dependencies": {
+        "@tauri-apps/api": "^2.10.1",
+        "taurpc": "^1.8.1"
+    },
+    "devDependencies": {
+        "@exam-timetable/eslint-config": "workspace:*",
+        "@typescript/native-preview": "7.0.0-dev.20260419.1",
+        "eslint": "^10.2.1"
+    }
 }

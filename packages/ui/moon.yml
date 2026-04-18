@@ -1,0 +1,58 @@
+language: typescript
+project:
+    name: ui
+    description: Custom UI components
+stack: frontend
+layer: library
+
+fileGroups:
+    sources:
+        - 'src/**/*'
+        - 'static/**/*'
+    configs:
+        - package.json
+        - tsconfig.json
+        - vite.config.js
+        - svelte.config.js
+        - eslint.config.js
+
+tasks:
+    build:
+        script: vite build && svelte-package && publint
+        deps:
+            - sync
+        outputs:
+            - dist/
+            - .svelte-kit/
+
+    dev:
+        command: noop
+        deps:
+            - dev/package
+            - dev/storybook
+
+    dev/package:
+        command: svelte-package --watch
+        preset: server
+        inputs:
+            - '@group(sources)'
+            - '@group(configs)'
+        outputs:
+            - dist
+        deps:
+            - sync
+
+    dev/storybook:
+        command: storybook dev -p 6006
+        preset: server
+        inputs:
+            - '@group(sources)'
+            - '@group(configs)'
+
+    sync:
+        command: svelte-kit sync
+        inputs:
+            - '@group(sources)'
+            - '@group(configs)'
+        outputs:
+            - .svelte-kit/

@@ -1,0 +1,26 @@
+{
+    "extends": [
+        "../../tsconfig.options.json",
+        "./.svelte-kit/tsconfig.json"
+    ],
+    "compilerOptions": {
+        "rewriteRelativeImportExtensions": true,
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "resolveJsonModule": true,
+        "allowJs": true,
+        "checkJs": true,
+        "strict": true,
+        "emitDeclarationOnly": true,
+        "noEmit": false,
+        "outDir": "../../.moon/cache/types/packages/ui",
+        "sourceMap": true,
+        "forceConsistentCasingInFileNames": true,
+        "skipLibCheck": true
+    },
+    "references": [
+        {
+            "path": "../eslint-config"
+        }
+    ]
+}

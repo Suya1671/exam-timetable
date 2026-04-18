@@ -1,4 +1,5 @@
-_note for people: this project is **not** vibe-coded. Agents were used to do stuff I did not want to do myself or not absolutely critical to functionality. I don't like making error messages._
+_note for people: this project is **not** vibe-coded. Agents were used to do stuff I did not want to/did not have time to do myself or not absolutely critical to functionality. I don't like making error messages. All code with AI comments will eventually be reviewed._
+
 # AGENTS Guide
 
 This file is for agentic coding assistants working in this repository.
@@ -6,57 +7,21 @@ It covers build/test/lint commands, code style, architecture, and safe extension
 
 ## Repository Layout
 
-- `crates/model`: shared domain types/newtypes.
-- `crates/entity`: Diesel entities generated from SQLite schema.
-- `crates/solver`: Z3-based scheduler and constraint logic.
-- `crates/backend`: backend data access + solver wiring.
-- `frontend`: SvelteKit app (Svelte 5, async compiler enabled, Drizzle ORM).
-- `frontend/app`: Tauri Rust host app (`app` crate in workspace).
+- List out all projects, their paths, and descriptions using `pnpm moon projects --json`
 - `migrations`: SQL migrations.
 - `docs/coverage.md`: coverage workflow.
 
 ## Core Commands
 
-Run from repo root unless noted.
-
-### Rust workspace
-
-- Build all: `cargo build`
-- Build one crate: `cargo build -p solver`
-- Test all: `cargo nextest run`
-- Test one crate: `cargo nextest run -p solver`
-- Test one test by name: `cargo nextest run -p solver add_pair_constraint_enforces_allowed_pairs`
-- Test one with stdout: `cargo nextest run -p solver add_pair_constraint_enforces_allowed_pairs -- --nocapture`
-- Lint: `cargo clippy --all-targets --all-features`
-- Format: `cargo fmt`
-
-### Coverage
-
-- Summary: `cargo cov`
-- HTML: `cargo cov-html`
-- LCOV: `cargo cov-lcov`
-- Cobertura: `cargo cov-cobertura`
-
-### Frontend (run in `frontend/`)
-
-- Install deps: `pnpm i`
-- Dev server: `pnpm dev`
-- Build: `pnpm build`
-- Type/Svelte checks: `pnpm check`
-- Check in watch mode: `pnpm check:watch`
-- Lint: `pnpm lint`
-- Format: `pnpm format`
-- Drizzle pull: `pnpm db:pull`
-- Tauri dev/build bridge: `pnpm tauri`
-
-### Tauri app
-
-- Rust crate path: `frontend/app`
-- Included in root workspace (`Cargo.toml` members include `frontend/app`).
+- All commands and task infrastructure is handled by moonrepo
+    - If a task fails, please use the debug-task skill to help the user debug the issue
+- List out all tasks using `pnpm moon tasks --json` and for a specific project using `pnpm moon tasks <project> --json`
+- Run a task using `pnpm moon run <project>:<task-name> --json`
+    - You can run all tasks for all projects using `pnpm moon run :<task-name> --json`
+    - For more guidance on the syntax, see https://moonrepo.dev/docs/concepts/target
 
 ## Testing Notes
 
-- Prefer `cargo nextest` for Rust tests.
 - For targeted debugging, run a single test name first before full suite.
 - Frontend currently has check/lint workflows; no dedicated unit-test runner is configured here.
 
@@ -74,6 +39,7 @@ Run from repo root unless noted.
 
 ### Frontend (TypeScript/Svelte)
 
+- Use eslint
 - Prefer explicit, narrow types for form values and data transforms.
 - Use existing alias conventions (`$lib`, route-local `./data`, `./forms`).
 - Keep component imports stable and remove unused imports aggressively.
@@ -113,14 +79,15 @@ Run from repo root unless noted.
 
 ## AI-Generated Annotation Requirement
 
-Any newly created **function**, **struct**, or **enum variant** must include:
+Any newly created **function**, **struct**, **constant/top level variable in a typescript/svelte file**, or **enum variant** must include:
 
 - Rust: `/// AI-generated (<Model/harness name>).`
 - Frontend/TS/JSDoc: `/** AI-generated (<Model/harness name>). */`
 - If doc comments already exist, append a single-line notice.
 - Keep notice ASCII-only.
+- Updates to functions must also have this notice, with the update annotated as a regular comment
+- Also include 1-2 bullets in your comment explaining *why* the change was made/what is the purpose of the function/update.
 
-Also include 1-2 bullets in your final response explaining *why* the change was made.
 
 ## Constraint Extension Checklist
 
@@ -159,8 +126,8 @@ When adding/changing hard or soft constraints:
 
 - Prefer minimal, local changes that match existing style.
 - Do not rewrite large files when extracting focused modules is enough.
-- For big Svelte pages, prefer extracting dialogs/sections into components and moving query/form
-  helpers into route-local `data.ts` / `forms.ts`.
+- For big Svelte pages, prefer extracting dialogs/sections into components
+    - Logic and variables should be self contained when possible, else be passed through props/events
 - Before finishing:
   - run relevant checks (`cargo` and/or `pnpm check`)
   - report any pre-existing failures separately from new regressions.

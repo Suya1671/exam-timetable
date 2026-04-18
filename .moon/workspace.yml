@@ -10,6 +10,7 @@ projects:
     eslint-config: "packages/eslint-config"
     frontend: "packages/frontend"
     tauri-api: "packages/tauri-api"
+    ui: "packages/ui"
 
 # Configures the version control system (VCS). Also known as
 # source code management (SCM).

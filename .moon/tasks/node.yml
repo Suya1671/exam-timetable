@@ -20,23 +20,20 @@ fileGroups:
         - "tests/**/*"
 
 tasks:
-    dev:
-        command: "pnpm dev"
-        preset: "server"
-        inputs:
-            - "@group(sources)"
-            - "@group(configs)"
-
     build:
-        command: "pnpm build"
         inputs:
             - "@group(sources)"
             - "@group(configs)"
-        outputs:
-            - "build"
+        deps:
+            - ^:build
+
+    dev:
+        preset: "server"
+
+    preview:
+        preset: "server"
 
     check:
-        command: "pnpm check"
         inputs:
             - "@group(sources)"
             - "@group(configs)"

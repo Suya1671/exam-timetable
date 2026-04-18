@@ -9,7 +9,7 @@ import { tokenShaker } from 'vite-plugin-token-shaker'
 const host = process.env.TAURI_DEV_HOST
 
 export default defineConfig(() => ({
-    plugins: [sveltekit(), functionsMixins({ deps: ['m3-svelte'] }), tokenShaker(), devtoolsJson()],
+    plugins: [sveltekit(), functionsMixins({ deps: ['m3-svelte', '@exam-timetable/ui'] }), tokenShaker(), devtoolsJson()],
 
     // Reduce the target to reduce the amount of polyfills and transforms since targetting latest webview2 and safari and webkitgtk in tauri
     // I have no clue if these are actually good values, but they work:tm: and seem to somewhat line up with 2026 baseline targets for webview2 and webkit

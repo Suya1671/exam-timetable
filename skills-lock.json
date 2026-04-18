@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "debug-task": {
+      "source": "moonrepo/moon",
+      "sourceType": "github",
+      "computedHash": "7393becbdda183fd0f809222a44e5c3df104b4da23be940c97bc8b75bb57d629"
+    }
+  }
+}

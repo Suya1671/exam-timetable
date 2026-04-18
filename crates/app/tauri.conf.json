@@ -5,7 +5,7 @@
 	"identifier": "in.wobbl.exam-scheduler",
 	"build": {
 		"devUrl": "http://localhost:1420",
-		"frontendDist": "../../frontend/build"
+		"frontendDist": "../../packages/frontend/build"
 	},
 	"app": {
 		"windows": [

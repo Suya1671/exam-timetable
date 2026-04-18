@@ -1,13 +1,17 @@
 {
     "extends": "../../tsconfig.options.json",
     "compilerOptions": {
-        "emitDeclarationOnly": true,
         "composite": true,
+        "emitDeclarationOnly": true,
         "outDir": "../../.moon/cache/types/packages/tauri-api"
     },
+    "references": [
+        {
+            "path": "../eslint-config"
+        }
+    ],
     "include": [
         "index.ts",
         "generated.ts"
-    ],
-    "references": []
+    ]
 }

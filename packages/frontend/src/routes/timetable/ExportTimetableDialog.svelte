@@ -1,7 +1,7 @@
 <script lang='ts'>
     import type { TimetableDay } from '@exam-timetable/tauri-api'
-    import EnhancedTextInput from '$lib/EnhancedTextInput.svelte'
     import { createTauRPCProxy } from '@exam-timetable/tauri-api'
+    import { EnhancedTextInput } from '@exam-timetable/ui'
     import { createForm } from '@tanstack/svelte-form'
     import { Button, Dialog } from 'm3-svelte'
     import { nonEmpty, pipe, string } from 'valibot'
@@ -104,15 +104,6 @@
         flex-direction: column;
         gap: 1.5rem;
         min-width: 24rem;
-    }
-
-    .checkbox-label {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        cursor: pointer;
-        user-select: none;
-        font-size: 0.95rem;
     }
 
     .info-text {

@@ -1,22 +1,22 @@
 {
-  "name": "@exam-timetable/eslint-config",
-  "version": "1.0.0",
-  "description": "",
-  "type": "module",
-  "module": "index.js",
-  "main": "index.js",
-  "keywords": [],
-  "author": "Suya1671",
-  "license": "MIT",
-  "packageManager": "pnpm@10.33.0",
-  "dependencies": {
-    "@antfu/eslint-config": "^8.2.0",
-    "@eslint/js": "^10.0.1",
-    "eslint": "^10.2.1",
-    "globals": "^17.5.0",
-    "typescript-eslint": "^8.58.2"
-  },
-  "devDependencies": {
-    "@typescript/native-preview": "7.0.0-dev.20260417.1"
-  }
+    "name": "@exam-timetable/eslint-config",
+    "type": "module",
+    "version": "1.0.0",
+    "packageManager": "pnpm@10.33.0",
+    "description": "",
+    "author": "Suya1671",
+    "license": "MIT",
+    "keywords": [],
+    "main": "index.js",
+    "module": "index.js",
+    "dependencies": {
+        "@antfu/eslint-config": "^8.2.0",
+        "@eslint/js": "^10.0.1",
+        "eslint": "^10.2.1",
+        "globals": "^17.5.0",
+        "typescript-eslint": "^8.58.2"
+    },
+    "devDependencies": {
+        "@typescript/native-preview": "7.0.0-dev.20260419.1"
+    }
 }
