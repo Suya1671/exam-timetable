@@ -7,7 +7,8 @@ projects:
     entity: "crates/entity"
     hack: "crates/hack"
     solver: "crates/solver"
-    frontend: "frontend"
+    eslint-config: "packages/eslint-config"
+    frontend: "packages/frontend"
 
 # Configures the version control system (VCS). Also known as
 # source code management (SCM).
@@ -20,7 +21,3 @@ vcs:
     # @since 1.8.0
     # @values "bitbucket" | "github" | "gitlab" | "other"
     provider: "github"
-
-# Disable layer relationship enforcement to allow app -> frontend
-constraints:
-    enforceLayerRelationships: false

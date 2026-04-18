@@ -1,0 +1,10 @@
+{
+    "extends": "../../tsconfig.options.json",
+    "compilerOptions": {
+        "emitDeclarationOnly": true,
+        "outDir": "../../.moon/cache/types/packages/eslint-config"
+    },
+    "include": [
+        "index.ts"
+    ]
+}

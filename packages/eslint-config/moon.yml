@@ -1,0 +1,12 @@
+language: typescript
+project:
+    name: eslint-config
+    description: ESLint config for the exam timetable project
+stack: infrastructure
+layer: configuration
+
+fileGroups:
+    sources:
+        - index.js
+    configs:
+        - package.json

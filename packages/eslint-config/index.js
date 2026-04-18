@@ -1,48 +1,45 @@
-import antfu from '@antfu/eslint-config'
-import drizzle from 'eslint-plugin-drizzle'
-import svelte from 'eslint-plugin-svelte'
+import antfu from "@antfu/eslint-config";
 import globals from 'globals'
 import ts from 'typescript-eslint'
-import svelteConfig from './svelte.config.js'
 
-export default antfu(
+/**
+ *
+ * @type {typeof import("@antfu/eslint-config").antfu}
+ */
+export const examTimetable = (overrides, ...extraConfigs) => antfu(
     {
         ignores: ['src/lib/backend.ts'],
-        svelte: true,
+        ...overrides,
         typescript: {
             tsconfigPath: 'tsconfig.json',
+            ...overrides.typescript,
             overrides: {
                 ...ts.configs.recommendedTypeChecked.map(config => config.rules ?? {}).reduce((a, b) => ({ ...a, ...b }), {}),
                 ...ts.configs.strictTypeChecked.map(config => config.rules ?? {}).reduce((a, b) => ({ ...a, ...b }), {}),
                 'ts/restrict-template-expressions': ['error', { allowBoolean: true, allowNumber: true }],
+                ...overrides.typescript?.overrides,
             },
         },
         formatters: {
             css: true,
             html: true,
             markdown: true,
+            ...overrides.formatters,
         },
         stylistic: {
             indent: 4,
+            ...overrides.stylistic,
         },
         yaml: {
             overrides: {
                 // fun fact! This doesn't work properly :)
                 'yaml/indent': 'off',
+                ...overrides.yaml?.overrides,
             },
         },
         rules: {
             'antfu/no-top-level-await': 'off',
-        },
-    },
-    svelte.configs.recommended,
-    // https://github.com/drizzle-team/drizzle-orm/issues/2491
-    {
-        plugins: {
-            drizzle,
-        },
-        rules: {
-            ...drizzle.configs.recommended.rules,
+            ...overrides.rules,
         },
     },
     {
@@ -52,16 +49,7 @@ export default antfu(
             // see: https://typescript-eslint.io/troubleshooting/faqs/eslint/#i-get-errors-from-the-no-undef-rule-about-global-variables-not-being-defined-even-though-there-are-no-typescript-errors
             'no-undef': 'off',
         },
-    },
-    {
-        files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
-        languageOptions: {
-            parserOptions: {
-                projectService: true,
-                extraFileExtensions: ['.svelte'],
-                parser: ts.parser,
-                svelteConfig,
-            },
-        },
-    },
+    }
 )
+
+export default examTimetable

@@ -10,6 +10,13 @@ javascript:
     packageManager: 'pnpm'
     syncProjectWorkspaceDependencies: true
 
+typescript:
+    createMissingConfig: true
+    includeProjectReferenceSources: true
+    includeSharedTypes: true
+    routeOutDirToCache: true
+    syncProjectReferences: true
+
 node: {}
 
 pnpm: {}
