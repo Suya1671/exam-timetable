@@ -18,12 +18,11 @@ fileGroups:
 
 tasks:
     build:
-        script: vite build && svelte-package && publint
+        script: svelte-package && publint
         deps:
             - sync
         outputs:
             - dist/
-            - .svelte-kit/
 
     dev:
         command: noop

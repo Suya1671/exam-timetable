@@ -1,0 +1,133 @@
+/* Material themes */
+@import '@fontsource-variable/google-sans-flex/full.css';
+@import 'm3-svelte/etc/styles.css';
+@import 'm3-svelte/etc/recommended-styles.css';
+
+/* theme (material 3 expressive-based) */
+
+@function --m3-density(--size) {
+    result: var(--size);
+}
+
+@layer tokens {
+    :root {
+        /* Surface */
+        --m3c-surface: light-dark(#faf4ff, #10062d);
+        --m3c-surface-container-lowest: light-dark(#ffffff, #000000);
+        --m3c-surface-container-low: light-dark(#f5eeff, #160b36);
+        --m3c-surface-container: light-dark(#ede4ff, #1c113f);
+        --m3c-surface-container-high: light-dark(#e8deff, #231649);
+        --m3c-surface-container-highest: light-dark(#ece1ff, #23154b);
+
+        --m3c-on-surface: light-dark(#32294f, #eae1ff);
+        --m3c-on-surface-variant: light-dark(#4a4068, #b0a4d3);
+
+        /* Outline */
+        --m3c-outline: light-dark(#7b719c, #7a6f9b);
+        --m3c-outline-variant: light-dark(#b3a4e4, #4c3f77);
+
+        /* Inverse */
+        --m3c-inverse-surface: light-dark(#10062d, #fdf7ff);
+        --m3c-inverse-on-surface: light-dark(#a296c4, #594f78);
+        --m3c-inverse-primary: light-dark(#aaa8fd, #5856a4);
+
+        /* Primary */
+        --m3c-primary: light-dark(#5452a0, #aaa8fd);
+        --m3c-on-primary: light-dark(#f4f1ff, #282572);
+        --m3c-primary-container: light-dark(#aaa8fd, #9a98eb);
+        --m3c-on-primary-container: light-dark(#282572, #1a1464);
+
+        /* Secondary */
+        --m3c-secondary: light-dark(#6249b2, #a98ffe);
+        --m3c-on-secondary: light-dark(#f7f0ff, #280072);
+        --m3c-secondary-container: light-dark(#d8caff, #4d329c);
+        --m3c-on-secondary-container: light-dark(#4e339c, #d6c9ff);
+
+        /* Tertiary */
+        --m3c-tertiary: light-dark(#983772, #ff9dd1);
+        --m3c-on-tertiary: light-dark(#ffeff4, #6c0f4d);
+        --m3c-tertiary-container: light-dark(#fd8bcb, #fa88c8);
+        --m3c-on-tertiary-container: light-dark(#610244, #5e0042);
+
+        /* Error */
+        --m3c-error: light-dark(#b41340, #ff6e84);
+        --m3c-on-error: light-dark(#ffefef, #490013);
+        --m3c-error-container: light-dark(#f74b6d, #a70138);
+        --m3c-on-error-container: light-dark(#510017, #ffb2b9);
+
+        /* Misc */
+        --m3c-shadow: #000000;
+        --m3c-scrim: #000000;
+
+        /* Subtle */
+        --m3c-primary-container-subtle: light-dark(#c9c7ff, #2a275f);
+        --m3c-on-primary-container-subtle: light-dark(#3a377f, #b7b5ff);
+
+        --m3c-secondary-container-subtle: light-dark(#e6dcff, #2e1f6f);
+        --m3c-on-secondary-container-subtle: light-dark(#5a40aa, #cfc2ff);
+
+        --m3c-tertiary-container-subtle: light-dark(#ffc1e3, #3f0f2d);
+        --m3c-on-tertiary-container-subtle: light-dark(#7a1f5b, #ffb3da);
+
+        --m3c-error-container-subtle: light-dark(#ffc1c7, #5c001c);
+        --m3c-on-error-container-subtle: light-dark(#8f2339, #ff9aa5);
+    }
+}
+
+:root {
+    color-scheme: light dark;
+    background-color: var(--m3v-background);
+}
+
+:root[data-theme='light'] {
+    color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+    color-scheme: dark;
+}
+
+/* extra styling */
+html {
+    block-size: 100%;
+}
+
+body {
+    min-block-size: 100%;
+    font-family: 'Google Sans Flex Variable', sans-serif;
+}
+
+.m3-container[color='error'] {
+    /* Default contained variant uses primary/error tokens */
+    --m3c-primary: var(--m3c-error);
+    --m3c-on-primary: var(--m3c-on-error);
+    --m3c-primary-container: var(--m3c-error-container);
+    --m3c-on-primary-container: var(--m3c-on-error-container);
+    --m3c-primary-container-subtle: var(--m3c-error-container-subtle);
+    --m3c-on-primary-container-subtle: var(--m3c-on-error-container-subtle);
+
+    --m3c-on-surface: var(--m3c-on-error);
+    --m3c-on-surface-variant: var(--m3c-on-error-container);
+
+    /* Tonal variant uses secondary tokens remapped to error */
+    &.tonal,
+    &.assist {
+        --m3c-secondary: var(--m3c-error-container);
+        --m3c-on-secondary: var(--m3c-on-error-container);
+        --m3c-secondary-container: var(--m3c-error-container-subtle);
+        --m3c-on-secondary-container: var(--m3c-on-error-container-subtle);
+        --m3c-secondary-container-subtle: var(--m3c-error-container-subtle);
+        --m3c-on-secondary-container-subtle: var(--m3c-on-error-container-subtle);
+
+        --m3c-outline: var(--m3c-error-container);
+        --m3c-on-surface: var(--m3c-error);
+    }
+
+    /* Outlined variant: transparent background, error-colored text and border */
+    &.outlined {
+        --m3c-primary-container: transparent;
+        --m3c-on-primary: var(--m3c-error);
+        --m3c-outline: var(--m3c-error);
+        --m3c-on-container: var(--m3c-error);
+    }
+}
