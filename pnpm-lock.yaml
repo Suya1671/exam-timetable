@@ -185,9 +185,6 @@ importers:
 
   packages/ui:
     dependencies:
-      '@exam-timetable/eslint-config':
-        specifier: workspace:*
-        version: link:../eslint-config
       '@fontsource-variable/google-sans-flex':
         specifier: ^5.2.3
         version: 5.2.3
@@ -207,6 +204,9 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.2.1(jiti@2.6.1))
+      '@exam-timetable/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@iconify/types':
         specifier: ^2.0.0
         version: 2.0.0
