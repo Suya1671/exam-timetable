@@ -117,6 +117,7 @@
             cells.push(
               table.cell(
                 rowspan: day.sessions.len(),
+                breakable: false
               )[*#date.display("[weekday]\n[day] [month repr:long]")*],
             )
           }
