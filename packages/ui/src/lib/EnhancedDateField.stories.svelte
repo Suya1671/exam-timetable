@@ -19,16 +19,17 @@
 
 <script lang='ts'>
     import type { ComponentProps } from 'svelte'
+    import { Temporal } from '@js-temporal/polyfill'
     import { createForm } from '@tanstack/svelte-form'
 
     const form = createForm(() => ({
         defaultValues: {
-            date: new Date(),
+            date: Temporal.Now.plainDateISO(),
         },
     }))
 </script>
 
-<Story name='Default'>
+<Story name='Default' args={{ label: 'Date' }}>
     {#snippet template(args: ComponentProps<typeof EnhancedDateField>)}
         <form.Field name='date'>
             {#snippet children(field)}

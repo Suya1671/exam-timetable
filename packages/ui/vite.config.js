@@ -28,7 +28,6 @@ export default defineConfig({
                 browser: {
                     enabled: true,
                     headless: true,
-                    // @ts-expect-error this works for now... I think?
                     provider: playwright({}),
                     instances: [{
                         browser: 'chromium',

@@ -1,18 +1,18 @@
+import { Temporal } from '@js-temporal/polyfill'
 import { check, integer, minLength, minValue, number, pipe, string, transform } from 'valibot'
 
-/** AI-generated (GPT-5.2-codex). */
-export function getDatesBetween(start: Date, end: Date): Date[] {
-    const startUTC = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())
-    const endUTC = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate())
-
-    if (endUTC < startUTC) {
+export function getDatesBetween(
+    start: Temporal.PlainDate,
+    end: Temporal.PlainDate,
+): Temporal.PlainDate[] {
+    if (Temporal.PlainDate.compare(end, start) < 0) {
         throw new Error('End date must be after start date')
     }
 
-    const dayMs = 24 * 60 * 60 * 1000
-    const length = Math.floor((endUTC - startUTC) / dayMs) + 1
+    const days = start.until(end).days
 
-    return Array.from({ length }, (_, i) => new Date(startUTC + i * dayMs))
+    return Array.from({ length: days + 1 }, (_, i) =>
+        start.add({ days: i }))
 }
 
 export const gradesParser = pipe(

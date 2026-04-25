@@ -84,7 +84,7 @@
         })
     }
 
-    const dateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'long' })
+    const dateFormatter = new Intl.DateTimeFormat('en-ZA', { weekday: 'long', day: '2-digit', month: 'long' })
 </script>
 
 <DragDropProvider {modifiers} {sensors} onDragEnd={handleDragEnd}>
@@ -125,9 +125,9 @@
                                         {dateFormatter.format(new Date(day.date))}
                                     </th>
                                 {/if}
-                                <th scope='row' class='session-label'
-                                >Session {session.sessionNumber}</th
-                                >
+                                <th scope='row' class='session-label'>
+                                    Session {session.sessionNumber}
+                                </th>
                                 {#each grades as grade}
                                     {@const examEntries = session.exams.filter(
                                         e => e.grade === grade,

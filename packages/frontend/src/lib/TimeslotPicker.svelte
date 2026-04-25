@@ -1,9 +1,10 @@
 <!-- TODO: figure out how this works and de-vibe-codify it (On first glance, I can see a lot that can be improved sob) -->
 <script lang='ts'>
     import type { timeslot } from '$lib/db/schema'
-    import { dateUtils } from '@exam-timetable/ui'
+    import { Temporal } from '@js-temporal/polyfill'
     import { Button, Chip, ConnectedButtons, Switch } from 'm3-svelte'
-    import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity'
+    import { SvelteMap, SvelteSet } from 'svelte/reactivity'
+    import { buildMonthGrid } from './utils'
 
     type TimeslotRow = typeof timeslot.$inferSelect
     type RestrictionMode = 'allow' | 'deny'
@@ -11,13 +12,6 @@
     interface DaySlot {
         id: number
         slot: number
-    }
-
-    interface CalendarCell {
-        date: Date
-        dayNumber: number
-        inMonth: boolean
-        slots: DaySlot[]
     }
 
     let {
@@ -29,11 +23,6 @@
         selectedIds: SvelteSet<number>
         mode: RestrictionMode
     } = $props()
-
-    const monthName = (month: number) =>
-        new Date(2000, month, 1).toLocaleDateString(undefined, {
-            month: 'short',
-        })
 
     const slotLabel = (slot: number) => {
         switch (slot) {
@@ -57,14 +46,14 @@
             }
 
             const slotInfo = { id: row.id, slot }
-            const key = dateUtils.dateKeyUTC(row.date)
-            const existing = map.get(key)
+            const key = row.date
+            const existing = map.get(key.toString())
 
             if (existing) {
                 existing.push(slotInfo)
             }
             else {
-                map.set(key, [slotInfo])
+                map.set(key.toString(), [slotInfo])
             }
         }
 
@@ -80,41 +69,29 @@
     const minDateKey = $derived(allDateKeys[0] ?? '')
     const maxDateKey = $derived(allDateKeys[allDateKeys.length - 1] ?? '')
 
-    const minDate = $derived(minDateKey ? new SvelteDate(minDateKey) : null)
-    const maxDate = $derived(maxDateKey ? new SvelteDate(maxDateKey) : null)
+    const minDate = $derived(minDateKey ? Temporal.PlainDate.from(minDateKey) : Temporal.Now.plainDateISO())
+    const maxDate = $derived(maxDateKey ? Temporal.PlainDate.from(maxDateKey) : Temporal.Now.plainDateISO())
 
-    const calendarStart = $derived(minDate ? new SvelteDate(minDate) : null)
+    let focusedDate = $state(minDate)
 
-    let focusedMonth = $derived((calendarStart ?? new SvelteDate()).getMonth())
-    let focusedYear = $derived((calendarStart ?? new SvelteDate()).getFullYear())
-
-    const monthIndex = $derived(focusedYear * 12 + focusedMonth)
+    const monthIndex = $derived(focusedDate.year * 12 + focusedDate.month)
     const minMonthIndex = $derived(
-        minDate ? minDate.getFullYear() * 12 + minDate.getMonth() : monthIndex,
+        minDate ? minDate.year * 12 + minDate.month : monthIndex,
     )
     const maxMonthIndex = $derived(
-        maxDate ? maxDate.getFullYear() * 12 + maxDate.getMonth() : monthIndex,
+        maxDate ? maxDate.year * 12 + maxDate.month : monthIndex,
     )
 
     const canPrevMonth = $derived(monthIndex > minMonthIndex)
     const canNextMonth = $derived(monthIndex < maxMonthIndex)
 
-    const monthTitle = $derived(`${monthName(focusedMonth)} ${focusedYear}`)
-
-    const firstOfFocusedMonth = $derived(new Date(Date.UTC(focusedYear, focusedMonth, 1)))
-    const startOffset = $derived(firstOfFocusedMonth.getUTCDay())
+    const monthTitle = $derived(focusedDate.toLocaleString('en-ZA', { month: 'long', year: 'numeric' }))
 
     const visibleCells = $derived(
-        Array.from({ length: 42 }, (_, index): CalendarCell => {
-            const date = new Date(Date.UTC(focusedYear, focusedMonth, index - startOffset + 1))
-
-            return {
-                date,
-                dayNumber: date.getUTCDate(),
-                inMonth: date.getUTCMonth() === focusedMonth,
-                slots: byDate.get(dateUtils.dateKeyUTC(date)) ?? [],
-            }
-        }),
+        buildMonthGrid(focusedDate).map(cell => ({
+            ...cell,
+            slots: byDate.get(cell.date.toString()) ?? [],
+        })),
     )
 
     let showAllCounts = $state(false)
@@ -293,15 +270,7 @@
     }
 
     const moveMonth = (delta: number) => {
-        const nextIndex = monthIndex + delta
-        if (nextIndex < minMonthIndex || nextIndex > maxMonthIndex) {
-            return
-        }
-
-        const nextYear = Math.floor(nextIndex / 12)
-        const nextMonth = nextIndex % 12
-        focusedYear = nextYear
-        focusedMonth = nextMonth
+        focusedDate = focusedDate.add({ months: delta })
     }
 
     const selectedCount = $derived(selectedIds.size)
@@ -332,8 +301,8 @@
     const unsetCountDisplay = $derived(
         showAllCounts ? Math.max(0, allTimeslots.length - selectedCount) : visibleUnsetCount,
     )
-    const minDateLabel = $derived(minDate?.toLocaleDateString() ?? '')
-    const maxDateLabel = $derived(maxDate?.toLocaleDateString() ?? '')
+    const minDateLabel = $derived(minDate?.toLocaleString() ?? '')
+    const maxDateLabel = $derived(maxDate?.toLocaleString() ?? '')
 
     const slotOneTimeslots = $derived(allTimeslots.filter(row => Number(row.slot) === 0))
     const slotTwoTimeslots = $derived(allTimeslots.filter(row => Number(row.slot) === 1))
@@ -446,11 +415,11 @@
     </div>
 
     <div class='calendar-grid'>
-        {#each visibleCells as cell (cell.date.getTime())}
+        {#each visibleCells as cell (cell.date.toString())}
             <article
                 class='day-cell'
                 class:outside={!cell.inMonth}
-                data-day-key={dateUtils.dateKeyUTC(cell.date)}
+                data-day-key={cell.date.toString()}
             >
                 {#if cell.inMonth && cell.slots.length > 0}
                     <button
@@ -462,10 +431,10 @@
                             applySelectionToDay(cell.slots, false)
                         }}
                     >
-                        {cell.dayNumber}
+                        {cell.date.day}
                     </button>
                 {:else}
-                    <div class='day-number'>{cell.dayNumber}</div>
+                    <div class='day-number'>{cell.date.day}</div>
                 {/if}
 
                 {#if cell.inMonth && cell.slots.length > 0}
@@ -483,7 +452,7 @@
                                 title={slotLabel(top.slot)}
                                 oncontextmenu={onGridContextMenu}
                                 onpointerdown={event =>
-                                    onSlotPointerDown(event, top.id, dateUtils.dateKeyUTC(cell.date))}
+                                    onSlotPointerDown(event, top.id, cell.date.toString())}
                                 onkeydown={event => onSlotKey(event, top.id)}
                             >
                                 1
@@ -502,7 +471,7 @@
                                 title={slotLabel(bottom.slot)}
                                 oncontextmenu={onGridContextMenu}
                                 onpointerdown={event =>
-                                    onSlotPointerDown(event, bottom.id, dateUtils.dateKeyUTC(cell.date))}
+                                    onSlotPointerDown(event, bottom.id, cell.date.toString())}
                                 onkeydown={event => onSlotKey(event, bottom.id)}
                             >
                                 2

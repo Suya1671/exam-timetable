@@ -12,13 +12,13 @@ ignored = ["hack"]
 derive_more = { version = "2.1.1", features = ["display", "from", "into"] }
 entity = { path = "../entity" }
 hack = { path = "../hack", version = "0.1" }
-serde = { version = "1.0", features = ["derive"] }
-specta = { version = "=2.0.0-rc.22", features = ["derive"] }
+serde.workspace = true
+specta.workspace = true
 thiserror = "2.0.18"
 z3 = { version = "0.20.0", default-features = false }
 
 [features]
 default = []
-vcpkg = ["z3/vcpkg"]
 gh-release = ["z3/gh-release"]
+vcpkg = ["z3/vcpkg"]
 vendored = ["z3/vendored"]

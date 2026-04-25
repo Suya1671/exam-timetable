@@ -2,11 +2,11 @@
     import type { AnyFieldApi } from '@tanstack/svelte-form'
     import type { HTMLInputAttributes } from 'svelte/elements'
     import type { TransitionConfig } from 'svelte/transition'
+    import { Temporal } from '@js-temporal/polyfill'
     import iconCalendar from '@ktibow/iconset-material-symbols/calendar-today-outline'
     import { useStore } from '@tanstack/svelte-form'
     import { DatePickerDocked, easeEmphasized, Icon } from 'm3-svelte'
     import { onMount } from 'svelte'
-    import { dateKeyUTC } from './dateKeys.ts'
 
     interface Props extends HTMLInputAttributes {
         field: AnyFieldApi
@@ -87,8 +87,8 @@ opacity: ${Math.min(t * 3, 1)};`,
             {...extra}
             bind:this={input}
             name={field.name}
-            bind:value={() => field.state.value instanceof Date ? dateKeyUTC(field.state.value) ?? '' : field.state.value ?? '', v => (field.state.value = v)}
-            oninput={e => field.handleChange(e.currentTarget?.valueAsDate)}
+            value={field.state.value?.toString() ?? ''}
+            oninput={e => field.handleChange(e.currentTarget?.value ? Temporal.PlainDate.from(e.currentTarget?.value) : null)}
             onblur={field.handleBlur}
         />
         <div class='layer' aria-hidden='true'></div>
@@ -105,7 +105,7 @@ opacity: ${Math.min(t * 3, 1)};`,
         {#if picker}
             <div class='picker' transition:enterExit>
                 <DatePickerDocked
-                    date={dateKeyUTC(field.state.value)}
+                    date={field.state.value?.toString() ?? ''}
                     clearable={!required}
                     close={() => (picker = false)}
                     setDate={(d) => {

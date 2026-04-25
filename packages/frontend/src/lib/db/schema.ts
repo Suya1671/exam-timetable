@@ -8,6 +8,7 @@ import {
     text,
 } from 'drizzle-orm/sqlite-core'
 import { customDate, customTime } from './customTypes'
+import { sql } from 'drizzle-orm'
 
 export const dieselSchemaMigrations = sqliteTable('__diesel_schema_migrations', {
     version: text().primaryKey(),
@@ -211,8 +212,8 @@ export const sessionTimeConfig = sqliteTable('session_time_config', {
 export const timetables = sqliteTable('timetables', {
     id: integer().primaryKey(),
     name: text().notNull(),
-    createdAt: text('created_at').notNull(),
-    updatedAt: text('updated_at').notNull(),
+    createdAt: text('created_at').notNull().default(sql`(current_timestamp)`),
+    updatedAt: text('updated_at').notNull().$onUpdateFn(() => sql`CURRENT_TIMESTAMP`),
 })
 
 export const timetableSlots = sqliteTable(

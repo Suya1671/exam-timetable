@@ -1,14 +1,14 @@
 <script lang='ts'>
     import { db } from '$lib/db'
     import { sessionTimeConfig, timeslot } from '$lib/db/schema'
-    import { dateUtils, EnhancedDateField } from '@exam-timetable/ui'
+    import { buildMonthGrid } from '$lib/utils'
+    import { EnhancedDateField } from '@exam-timetable/ui'
     import { Temporal } from '@js-temporal/polyfill'
     import SaveIcon from '@ktibow/iconset-material-symbols/save-rounded'
     import { createForm } from '@tanstack/svelte-form'
     import { asc, eq, inArray } from 'drizzle-orm'
     import { Button, Icon } from 'm3-svelte'
     import { SvelteMap } from 'svelte/reactivity'
-    import { date, pipe } from 'valibot'
     import { getDatesBetween } from '../subjects/forms'
 
     /** AI-generated (GPT-5.3-codex). */
@@ -57,8 +57,8 @@
 
     const examPeriodForm = createForm(() => ({
         defaultValues: {
-            startDate: initialStartDate?.date ?? new Date(),
-            endDate: initialEndDate?.date ?? new Date(),
+            startDate: initialStartDate?.date ?? Temporal.Now.plainDateISO(),
+            endDate: initialEndDate?.date ?? Temporal.Now.plainDateISO(),
         },
         onSubmit: async ({ value, formApi }) => {
             const allDays = getDatesBetween(value.startDate, value.endDate)
@@ -139,22 +139,22 @@
         let endDate = rows[0]!.date
 
         for (const row of rows) {
-            if (row.date < startDate)
+            if (Temporal.PlainDate.compare(row.date, startDate) < 0)
                 startDate = row.date
-            if (row.date > endDate)
+            if (Temporal.PlainDate.compare(row.date, endDate) > 0)
                 endDate = row.date
         }
 
         examPeriodForm.reset({
-            startDate: new Date(startDate),
-            endDate: new Date(endDate),
+            startDate,
+            endDate,
         })
     }
     const byDate = $derived.by(() => {
-        const map = new SvelteMap<string, { date: Date, slots: (typeof allTimeslots)[number][] }>()
+        const map = new SvelteMap<string, { date: Temporal.PlainDate, slots: (typeof allTimeslots)[number][] }>()
 
         for (const row of allTimeslots) {
-            const key = dateUtils.dateKeyUTC(row.date)
+            const key = row.date.toString()
             const existing = map.get(key)
             if (existing) {
                 existing.slots.push(row)
@@ -171,39 +171,20 @@
         return map
     })
 
-    const startingDate
-        = (
+    let focusedDate = $state(
+        (
             await db
                 .select({ date: timeslot.date })
                 .from(timeslot)
                 .orderBy(asc(timeslot.date))
                 .limit(1)
-        )[0]?.date ?? new Date()
-
-    let focusedMonth = $state(startingDate.getUTCMonth())
-    let focusedYear = $state(startingDate.getUTCFullYear())
+        )[0]?.date ?? Temporal.Now.plainDateISO(),
+    )
 
     /** AI-generated (GPT-5.3-codex). */
     async function refreshTimeslots() {
         allTimeslots = await getTimeslots()
         syncExamPeriodFromTimeslots(allTimeslots)
-    }
-
-    /** AI-generated (GPT-5.3-codex). */
-    function monthName(month: number) {
-        const months = [
-            'January',
-            'February',
-            'March',
-            'April',
-            'May',
-            'June',
-            'July',
-            'August',
-            'September',
-        ]
-        const rest = ['October', 'November', 'December']
-        return [...months, ...rest][month] ?? 'Unknown'
     }
 
     /** AI-generated (GPT-5.3-codex). */
@@ -223,27 +204,17 @@
 
     /** AI-generated (GPT-5.3-codex). */
     function moveMonth(delta: number) {
-        const next = new Date(Date.UTC(focusedYear, focusedMonth + delta, 1))
-        focusedYear = next.getUTCFullYear()
-        focusedMonth = next.getUTCMonth()
+        focusedDate = focusedDate.add({ months: delta })
     }
 
-    const monthTitle = $derived(`${monthName(focusedMonth)} ${focusedYear}`)
+    const monthTitle = $derived(focusedDate.toLocaleString('en-ZA', { month: 'long', year: 'numeric' }))
 
-    const firstOfMonth = $derived(new Date(Date.UTC(focusedYear, focusedMonth, 1)))
-    const startOffset = $derived((firstOfMonth.getUTCDay() + 6) % 7)
-
-    const visibleCells = $derived.by(() => {
-        return Array.from({ length: 42 }, (_, index) => {
-            const date = new Date(Date.UTC(focusedYear, focusedMonth, index - startOffset + 1))
-            return {
-                date,
-                dayNumber: date.getUTCDate(),
-                inMonth: date.getUTCMonth() === focusedMonth,
-                slots: byDate.get(dateUtils.dateKeyUTC(date))?.slots ?? [],
-            }
-        })
-    })
+    const visibleCells = $derived.by(() =>
+        buildMonthGrid(focusedDate).map(cell => ({
+            ...cell,
+            slots: byDate.get(cell.date.toString())?.slots ?? [],
+        })),
+    )
 
     /** AI-generated (GPT-5.3-codex). */
     async function removeTimeslot(timeslotId: number) {
@@ -252,9 +223,9 @@
     }
 
     /** AI-generated (GPT-5.3-codex). */
-    async function removeDate(date: Date) {
-        const key = dateUtils.dateKeyUTC(date)
-        const ids = allTimeslots.filter(row => dateUtils.dateKeyUTC(row.date) === key).map(row => row.id)
+    async function removeDate(date: Temporal.PlainDate) {
+        const key = date.toString()
+        const ids = allTimeslots.filter(row => row.date.toString() === key).map(row => row.id)
         if (ids.length === 0)
             return
 
@@ -266,8 +237,8 @@
     async function removeWeekends() {
         const weekendIds = allTimeslots
             .filter((row) => {
-                const day = row.date.getUTCDay()
-                return day === 0 || day === 6
+                const day = row.date.dayOfWeek
+                return day === 6 || day === 7
             })
             .map(row => row.id)
 
@@ -278,8 +249,8 @@
     }
 
     /** AI-generated (GPT-5.3-codex). */
-    async function addSlotForDate(date: Date, slotNumber: number) {
-        const key = dateUtils.dateKeyUTC(date)
+    async function addSlotForDate(date: Temporal.PlainDate, slotNumber: number) {
+        const key = date.toString()
         const slots = byDate.get(key)?.slots ?? []
         if (dayHasSlot(slots, slotNumber))
             return
@@ -317,7 +288,6 @@
                     <div class='field-grid'>
                         <examPeriodForm.Field
                             name='startDate'
-                            validators={{ onChange: pipe(date()) }}
                         >
                             {#snippet children(field)}
                                 <EnhancedDateField
@@ -333,7 +303,6 @@
                         <examPeriodForm.Field
                             name='endDate'
                             validators={{
-                                onBlur: pipe(date()),
                                 onChangeListenTo: ['startDate'],
                                 onChange: ({ value, fieldApi }) => {
                                     const startDate = fieldApi.form.getFieldValue('startDate')
@@ -506,8 +475,8 @@
                 <Button
                     variant='tonal'
                     type='button'
-                    onclick={() => {
-                        void removeWeekends()
+                    onclick={async () => {
+                        removeWeekends()
                     }}
                 >
                     Remove weekends
@@ -529,59 +498,55 @@
             </ol>
 
             <div class='calendar-grid'>
-                {#each visibleCells as cell (cell.date.getTime())}
+                {#each visibleCells as cell (cell.date.toString())}
                     <article class='day-cell' class:outside={!cell.inMonth}>
                         <header>
-                            <span>{cell.dayNumber}</span>
-                            {#if cell.inMonth && cell.slots.length > 0}
+                            <span>{cell.date.day}</span>
+                            {#if cell.slots.length > 0}
                                 <button
                                     type='button'
                                     class='danger-button'
                                     title='Remove date'
-                                    onclick={() => void removeDate(cell.date)}
+                                    onclick={async () => removeDate(cell.date)}
                                 >
                                     Remove day
                                 </button>
                             {/if}
                         </header>
 
-                        {#if cell.inMonth}
-                            <ul class='slot-stack'>
-                                {#each [0, 1] as slotNumber (slotNumber)}
-                                    <li class='slot-row'>
-                                        <h4>Slot {slotNumber + 1}</h4>
-                                        {#if dayHasSlot(cell.slots, slotNumber)}
-                                            <div class='slot-editor'>
-                                                <span class='available-tag'>Available</span>
-                                                <button
-                                                    type='button'
-                                                    class='danger-button'
-                                                    onclick={() => {
-                                                        const id = slotId(cell.slots, slotNumber)
-                                                        if (id === null)
-                                                            return
-                                                        void removeTimeslot(id)
-                                                    }}
-                                                >
-                                                    Remove
-                                                </button>
-                                            </div>
-                                        {:else}
+                        <ul class='slot-stack'>
+                            {#each [0, 1] as slotNumber (slotNumber)}
+                                <li class='slot-row'>
+                                    <h4>Slot {slotNumber + 1}</h4>
+                                    {#if dayHasSlot(cell.slots, slotNumber)}
+                                        <div class='slot-editor'>
+                                            <span class='available-tag'>Available</span>
                                             <button
                                                 type='button'
-                                                class='add-button'
-                                                onclick={() =>
-                                                    void addSlotForDate(cell.date, slotNumber)}
+                                                class='danger-button'
+                                                onclick={async () => {
+                                                    const id = slotId(cell.slots, slotNumber)
+                                                    if (id === null)
+                                                        return
+                                                    await removeTimeslot(id)
+                                                }}
                                             >
-                                                Add Slot {slotNumber + 1}
+                                                Remove
                                             </button>
-                                        {/if}
-                                    </li>
-                                {/each}
-                            </ul>
-                        {:else if cell.slots.length === 0}
-                            <p>No slots</p>
-                        {/if}
+                                        </div>
+                                    {:else}
+                                        <button
+                                            type='button'
+                                            class='add-button'
+                                            onclick={async () =>
+                                                await addSlotForDate(cell.date, slotNumber)}
+                                        >
+                                            Add Slot {slotNumber + 1}
+                                        </button>
+                                    {/if}
+                                </li>
+                            {/each}
+                        </ul>
                     </article>
                 {/each}
             </div>

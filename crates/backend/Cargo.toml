@@ -8,22 +8,18 @@ license.workspace = true
 ignored = ["hack"]
 
 [dependencies]
-diesel = { version = "2.3.7", features = [
-  "returning_clauses_for_sqlite_3_35",
-  "sqlite",
-  "time",
-] }
+diesel.workspace = true
 entity = { path = "../entity", version = "0.1.0" }
 hack = { path = "../hack", version = "0.1" }
 itertools = "0.14.0"
-serde = { version = "1.0.228", features = ["derive"] }
+serde.workspace = true
 solver = { path = "../solver", version = "0.1.0" }
-specta = { version = "=2.0.0-rc.22", features = ["derive"] }
+specta.workspace = true
 thiserror = "2.0.18"
-time = "0.3.47"
+time.workspace = true
 
 [features]
 default = []
-vcpkg = ["solver/vcpkg"]
 gh-release = ["solver/gh-release"]
+vcpkg = ["solver/vcpkg"]
 vendored = ["solver/vendored"]

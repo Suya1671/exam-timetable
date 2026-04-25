@@ -12,9 +12,8 @@
     import { db } from '$lib/db'
     import { sessionTimeConfig, timetables, timetableSlots } from '$lib/db/schema'
     import { createTauRPCProxy } from '@exam-timetable/tauri-api'
-    import { dateUtils } from '@exam-timetable/ui'
     import { Temporal } from '@js-temporal/polyfill'
-    import { eq } from 'drizzle-orm'
+    import { eq, sql } from 'drizzle-orm'
     import { Button } from 'm3-svelte'
     import { SvelteMap, SvelteSet } from 'svelte/reactivity'
     import ExamTimetableSheet from './ExamTimetableSheet.svelte'
@@ -132,28 +131,23 @@
         return timeOverrides.get(sessionId) ?? null
     }
 
-    /**
-     * Gets the week number from 1-52 (ISO 8601).
-     */
-    const getWeekNumber = (date: Date) => {
-        const week = Temporal.PlainDate.from(date.toISOString().split('T')[0]!).weekOfYear
-        if (week === undefined)
-            throw new Error(`weekOfYear is not set for date ${date.toISOString()}`)
-        return week
-    }
-
     const firstDay = $derived(
-        new Date(Math.min(...initialTimeslots.map(timeslot => timeslot.date.getTime()))),
+        initialTimeslots
+            .map(timeslot => timeslot.date)
+            .reduce((min, d) =>
+                Temporal.PlainDate.compare(d, min) < 0 ? d : min,
+            ),
     )
-    const firstWeek = $derived(getWeekNumber(firstDay))
+
+    const firstWeek = $derived(firstDay.weekOfYear ?? 1)
 
     /** AI-generated (GPT-5.3-codex). Modified but not fully checked over */
     const days = $derived.by(() => {
         const byDate = new SvelteMap<string, TimetableDay>()
 
         for (const timeslot of initialTimeslots) {
-            const key = dateUtils.dateKeyUTC(timeslot.date)
-            const weekNumber = getWeekNumber(timeslot.date) - firstWeek + 1
+            const key = timeslot.date.toString()
+            const weekNumber = (timeslot.date.weekOfYear ?? 1) - firstWeek + 1
             const sessionTime = sessionTimeBySlot[timeslot.slot]
             if (!sessionTime)
                 throw new Error(`sessionTime for slot ${timeslot.slot} is not set`)
@@ -207,7 +201,7 @@
 
             const existing = byDate.get(key)
             if (!existing) {
-                byDate.set(key, { date: timeslot.date.toISOString(), weekNumber, sessions: [row] })
+                byDate.set(key, { date: timeslot.date.toString(), weekNumber, sessions: [row] })
             }
             else {
                 existing.sessions.push(row)
@@ -304,14 +298,11 @@
 
     /** AI-generated (GPT-5.3-codex). */
     async function saveCurrentTimetable() {
-        const now = new Date().toISOString()
         if (selectedTimetableId === null) {
             const [created] = await db
                 .insert(timetables)
                 .values({
-                    name: nextTimetableName(),
-                    createdAt: now,
-                    updatedAt: now,
+                    name: nextTimetableName()
                 })
                 .returning({ id: timetables.id })
             selectedTimetableId = created?.id ?? null
@@ -343,7 +334,7 @@
             }
             await tx
                 .update(timetables)
-                .set({ updatedAt: now })
+                .set({ updatedAt: sql`CURRENT_TIMESTAMP` })
                 .where(eq(timetables.id, selectedTimetableId!))
         })
 
