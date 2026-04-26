@@ -11,6 +11,7 @@ projects:
     frontend: "packages/frontend"
     tauri-api: "packages/tauri-api"
     ui: "packages/ui"
+    website: "packages/website"
 
 # Configures the version control system (VCS). Also known as
 # source code management (SCM).

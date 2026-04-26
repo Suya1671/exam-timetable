@@ -1,0 +1,45 @@
+language: typescript
+project:
+    name: website
+    description: SvelteKit website for exam timetable
+stack: frontend
+layer: application
+
+fileGroups:
+    sources:
+        - 'src/**/*'
+        - 'static/**/*'
+    configs:
+        - package.json
+        - tsconfig.json
+        - vite.config.js
+        - svelte.config.js
+        - eslint.config.js
+
+tasks:
+    build:
+        command: vite build
+        deps:
+            - sync
+        outputs:
+            - build/
+            - .svelte-kit/
+
+    dev:
+        command: vite dev
+
+    preview:
+        command: vite preview
+
+    check:
+        command: svelte-check --tsconfig ./tsconfig.json --incremental --tsgo
+        deps:
+            - sync
+
+    sync:
+        command: svelte-kit sync
+        inputs:
+            - '@group(sources)'
+            - '@group(configs)'
+        outputs:
+            - .svelte-kit/

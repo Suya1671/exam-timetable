@@ -89,16 +89,14 @@ libsqlite3-sys = { version = "0.30", features = ["bundled"] }
 syn = { version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 toml = { version = "0.8", default-features = false, features = ["display", "parse"] }
 toml_parser = { version = "1" }
-winnow-ca01ad9e24f5d932 = { package = "winnow", version = "0.7" }
-winnow-dff4ba8e3ae991db = { package = "winnow", version = "1" }
+winnow = { version = "1" }
 
 [target.x86_64-unknown-linux-gnu.build-dependencies]
 fastrand = { version = "2" }
 libc = { version = "0.2" }
 toml = { version = "0.8", default-features = false, features = ["display", "parse"] }
 toml_parser = { version = "1" }
-winnow-ca01ad9e24f5d932 = { package = "winnow", version = "0.7" }
-winnow-dff4ba8e3ae991db = { package = "winnow", version = "1" }
+winnow = { version = "1" }
 
 [target.aarch64-unknown-linux-gnu.dependencies]
 fastrand = { version = "2" }
@@ -107,41 +105,35 @@ libsqlite3-sys = { version = "0.30", features = ["bundled"] }
 syn = { version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 toml = { version = "0.8", default-features = false, features = ["display", "parse"] }
 toml_parser = { version = "1" }
-winnow-ca01ad9e24f5d932 = { package = "winnow", version = "0.7" }
-winnow-dff4ba8e3ae991db = { package = "winnow", version = "1" }
+winnow = { version = "1" }
 
 [target.aarch64-unknown-linux-gnu.build-dependencies]
 fastrand = { version = "2" }
 libc = { version = "0.2" }
 toml = { version = "0.8", default-features = false, features = ["display", "parse"] }
 toml_parser = { version = "1" }
-winnow-ca01ad9e24f5d932 = { package = "winnow", version = "0.7" }
-winnow-dff4ba8e3ae991db = { package = "winnow", version = "1" }
+winnow = { version = "1" }
 
 [target.x86_64-apple-darwin.dependencies]
 libc = { version = "0.2" }
 libsqlite3-sys = { version = "0.30", features = ["bundled"] }
 memchr = { version = "2" }
-quick-xml = { version = "0.38", features = ["overlapped-lists", "serialize"] }
 
 [target.x86_64-apple-darwin.build-dependencies]
 deranged = { version = "0.5", features = ["powerfmt", "serde"] }
 libc = { version = "0.2" }
 memchr = { version = "2" }
-quick-xml = { version = "0.38", features = ["overlapped-lists", "serialize"] }
 time = { version = "0.3", features = ["formatting", "macros", "parsing", "serde"] }
 
 [target.aarch64-apple-darwin.dependencies]
 libc = { version = "0.2" }
 libsqlite3-sys = { version = "0.30", features = ["bundled"] }
 memchr = { version = "2" }
-quick-xml = { version = "0.38", features = ["overlapped-lists", "serialize"] }
 
 [target.aarch64-apple-darwin.build-dependencies]
 deranged = { version = "0.5", features = ["powerfmt", "serde"] }
 libc = { version = "0.2" }
 memchr = { version = "2" }
-quick-xml = { version = "0.38", features = ["overlapped-lists", "serialize"] }
 time = { version = "0.3", features = ["formatting", "macros", "parsing", "serde"] }
 
 [target.x86_64-pc-windows-msvc.dependencies]

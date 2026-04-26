@@ -20,7 +20,7 @@
     },
     "devDependencies": {
         "@exam-timetable/eslint-config": "workspace:*",
-        "@typescript/native-preview": "7.0.0-dev.20260425.1",
+        "@typescript/native-preview": "7.0.0-dev.20260429.1",
         "eslint": "^10.2.1"
     }
 }

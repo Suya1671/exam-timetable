@@ -1,0 +1,46 @@
+name: Deploy to GitHub Pages
+
+on:
+    push:
+        branches: ['main']
+
+jobs:
+    build_site:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+
+            - name: Setup moon toolchain
+              uses: 'moonrepo/setup-toolchain@v0'
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v5
+              with:
+                  cache: true
+                  run_install: true
+
+            - name: Build
+              run: pnpm moon run website:build
+
+            - name: Upload Artifacts
+              uses: actions/upload-pages-artifact@v3
+              with:
+                  # this should match the `pages` option in your adapter-static options
+                  path: 'packages/website/build/'
+
+    deploy:
+        needs: build_site
+        runs-on: ubuntu-latest
+
+        permissions:
+            pages: write
+            id-token: write
+
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+
+        steps:
+            - name: Deploy
+              id: deployment
+              uses: actions/deploy-pages@v4
