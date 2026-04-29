@@ -1,37 +1,37 @@
 {
-	"name": "website",
-	"private": true,
-	"version": "0.0.1",
-	"type": "module",
-	"scripts": {
-		"prepare": "svelte-kit sync || echo ''"
-	},
-	"dependencies": {
-		"@exam-timetable/ui": "workspace:*",
-		"@js-temporal/polyfill": "^0.5.1",
-		"@ktibow/iconset-material-symbols": "^0.0.1764827375",
-		"m3-svelte": "^7.1.2"
-	},
-	"devDependencies": {
-		"@eslint/js": "^10.0.1",
-		"@exam-timetable/eslint-config": "workspace:*",
-		"@exam-timetable/tauri-api": "workspace:*",
-		"@sveltejs/adapter-static": "^3.0.10",
-		"@sveltejs/kit": "^2.57.0",
-		"@sveltejs/vite-plugin-svelte": "^7.0.0",
-		"@types/node": "^25.6.0",
-		"eslint": "^10.2.0",
-		"eslint-plugin-format": "^2.0.1",
-		"eslint-plugin-svelte": "^3.17.0",
-		"globals": "^17.4.0",
-		"lightningcss": "^1.32.0",
-		"svelte": "^5.55.2",
-		"svelte-check": "^4.4.6",
-		"typescript": "^6.0.2",
-		"typescript-eslint": "^8.58.1",
-		"vite": "^8.0.7",
-		"vite-plugin-devtools-json": "^1.0.0",
-		"vite-plugin-functions-mixins": "^0.4.1",
-		"vite-plugin-token-shaker": "^0.0.7"
-	}
+    "name": "website",
+    "type": "module",
+    "version": "0.0.1",
+    "private": true,
+    "scripts": {
+        "prepare": "svelte-kit sync || echo ''"
+    },
+    "dependencies": {
+        "@exam-timetable/ui": "workspace:*",
+        "@js-temporal/polyfill": "^0.5.1",
+        "@ktibow/iconset-material-symbols": "^0.0.1764827375",
+        "m3-svelte": "^7.1.2"
+    },
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "@exam-timetable/eslint-config": "workspace:*",
+        "@exam-timetable/tauri-api": "workspace:*",
+        "@sveltejs/adapter-static": "^3.0.10",
+        "@sveltejs/kit": "^2.57.0",
+        "@sveltejs/vite-plugin-svelte": "^7.0.0",
+        "@types/node": "^25.6.0",
+        "eslint": "^10.2.0",
+        "eslint-plugin-format": "^2.0.1",
+        "eslint-plugin-svelte": "^3.17.0",
+        "globals": "^17.4.0",
+        "lightningcss": "^1.32.0",
+        "svelte": "^5.55.2",
+        "svelte-check": "^4.4.6",
+        "typescript": "^6.0.2",
+        "typescript-eslint": "^8.58.1",
+        "vite": "^8.0.7",
+        "vite-plugin-devtools-json": "^1.0.0",
+        "vite-plugin-functions-mixins": "^0.4.1",
+        "vite-plugin-token-shaker": "^0.0.7"
+    }
 }
