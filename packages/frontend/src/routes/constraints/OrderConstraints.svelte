@@ -351,6 +351,7 @@
             border-radius: var(--m3-shape-small);
         }
     }
+
     footer {
         margin-top: 1rem;
     }
