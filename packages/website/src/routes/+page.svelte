@@ -53,7 +53,7 @@
             sessions: day.sessions.map((session) => {
                 const exams = session.exams.filter(exam => selectedSubjects.includes(exam.subject) && exam.grade === Number(grade))
                 if (exams.length > 1) {
-                    throw new Error(`Multiple exams found on ${session.date} session ${session.sessionNumber}. You cannot write multiple exams at the same time.`)
+                    throw new Error(`Multiple exams found on ${day.date.toLocaleString()} session ${session.sessionNumber}. You cannot write multiple exams at the same time.`)
                 }
                 const exam = exams[0]
                 return {
