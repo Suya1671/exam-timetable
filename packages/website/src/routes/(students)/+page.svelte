@@ -81,7 +81,8 @@
 
     const exportPdf = async (data: ReturnType<typeof createFilteredTimetableData>) => {
         const pdf = await typst.pdf({ mainContent: template, inputs: { data: JSON.stringify(data) } })
-        if (!pdf) throw new Error('Failed to generate PDF')
+        if (!pdf)
+            throw new Error('Failed to generate PDF')
 
         const blob = new Blob([pdf as Uint8Array<ArrayBuffer>], { type: 'application/pdf' })
         const url = URL.createObjectURL(blob)
@@ -109,11 +110,11 @@
                 const start = day.date.toZonedDateTime({ timeZone: userTZ, plainTime: exam.startTime })
                 const end = day.date.toZonedDateTime({ timeZone: userTZ, plainTime: exam.endTime })
 
-                const examName =
-                    exam.examName ??
-                    (hasMultipleExams(data, exam.subject)
-                        ? `Paper ${exam.paperNumber}`
-                        : '')
+                const examName
+                    = exam.examName
+                        ?? (hasMultipleExams(data, exam.subject)
+                            ? `Paper ${exam.paperNumber}`
+                            : '')
 
                 // TODO: automatically create alarms
                 return {
