@@ -123,10 +123,6 @@ export type TimetableDay = {
  */
 date: string; 
 /**
- * The week number of the exam, based on the earliest week as week 1
- */
-weekNumber: number; 
-/**
  * The sessions that occur on this day
  */
 sessions: TimetableSession[] }

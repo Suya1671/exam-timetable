@@ -48,15 +48,25 @@
 
 #v(1em)
 
-#let weeks = data.days.map(d => d.weekNumber).dedup()
+#let parseDate(s) = toml(bytes("date = " + s)).date
+#let weekNumber(date) = int(date.display("[week_number repr:ISO]"))
+
+#let firstDayWeekNumber = weekNumber(parseDate(data.days.first().date))
+
+#let days = data.days.map(day => (
+  ..day,
+  date: parseDate(day.date),
+  weekNumber: weekNumber(parseDate(day.date)) - firstDayWeekNumber + 1,
+))
+
+#let weeks = days.map(d => d.weekNumber).dedup()
 
 #let main-bg = white
 #let offset-bg = luma(90%)
 
 // Iterators my beloved
 #let maxPaperNumber(grade, subject) = {
-  data
-    .days
+  days
     .map(day => day.sessions)
     .flatten()
     .map(sessions => sessions.exams)
@@ -102,13 +112,10 @@
 
     ..{
       let cells = ()
-      let daysInWeek = data.days.filter(day => day.weekNumber == week)
+      let daysInWeek = days.filter(day => day.weekNumber == week)
 
       for day in daysInWeek {
         cells.push(table.hline(stroke: bold-stroke))
-        let parseDate(s) = toml(bytes("date = " + s)).date
-        let date = parseDate(day.date)
-
         for (i, session) in day.sessions.enumerate() {
           let row-fill = if calc.odd(i) { offset-bg } else { main-bg }
           if i == 0 {
@@ -116,7 +123,7 @@
               table.cell(
                 rowspan: day.sessions.len(),
                 breakable: false,
-              )[*#date.display("[weekday]\n[day] [month repr:long]")*],
+              )[*#day.date.display("[weekday]\n[day] [month repr:long]")*],
             )
           }
 

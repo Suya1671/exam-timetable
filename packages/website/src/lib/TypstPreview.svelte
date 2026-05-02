@@ -22,4 +22,4 @@
     })
 </script>
 
-<div bind:this={previewCanvasContainer} />
+<div bind:this={previewCanvasContainer}></div>

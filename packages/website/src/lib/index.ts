@@ -50,10 +50,6 @@ const timetableDaySchema = defineSchema<TimetableDay>()({
             ),
         ),
     ),
-    weekNumber: pipe(
-        number(),
-        integer(),
-    ),
     sessions: array(timetableSessionSchema),
 })
 

@@ -20,29 +20,26 @@
         accept: '.pdf',
     })
 
-    const file = $derived(examPdf.selected)
-
-    const pdfPromise = $derived.by(async () => {
-        if (!file)
-            return null
+    const loadPDFFromFile = async (file: File) => {
         const bytes = await file.arrayBuffer()
 
         const { PDFDocument } = await import('@cantoo/pdf-lib')
         return await PDFDocument.load(bytes)
-    })
+    }
 
-    const readTimetableData = async (pdf: PDFDocument) => {
-        const attachments = pdf?.getAttachments()
-        const dataAttachment = attachments?.find(attachment => attachment.name === 'data.json')
-        const dataBytes = await dataAttachment?.data
-        if (!dataBytes)
-            return null
+    const readTimetableData = (pdf: PDFDocument) => {
+        const attachments = pdf.getAttachments()
+        const dataAttachment = attachments.find(attachment => attachment.name === 'data.json')
+
+        if (!dataAttachment) {
+            throw new Error('No data.json attachment found in PDF. Are you sure this is a exam timetable PDF?')
+        }
+
+        const dataBytes = dataAttachment.data
 
         const decoded = JSON.parse(new TextDecoder().decode(dataBytes))
         return safeParse(examTimetableSchema, decoded)
     }
-
-    let previewCanvas: HTMLElement | null = $state(null)
 
     let grade = $state('')
     let selectedSubjects = $state<string[]>([])
@@ -68,13 +65,17 @@
                 }
             }),
         }))
-            .filter(day => day.sessions.flatMap(s => s.exams).length > 0)
+
+        const startDay = days.findIndex(day => day.sessions.some(session => session.exam !== null))
+        const endDay = days.findLastIndex(day => day.sessions.some(session => session.exam !== null))
+
+        const filteredDays = days.slice(startDay, endDay + 1)
 
         return {
             title: timetable.title,
             schoolName: timetable.schoolName,
             grade: Number(grade),
-            days,
+            days: filteredDays,
         }
     }
 
@@ -107,8 +108,8 @@
         <Icon icon={UploadIcon} size={64}></Icon>
 
         <p>
-            {#if file}
-                {file.name}
+            {#if examPdf.selected}
+                {examPdf.selected.name}
             {:else if examPdf.isDragging}
                 Drop your PDF here
             {:else}
@@ -117,71 +118,69 @@
         </p>
     </Card>
 
-    <svelte:boundary>
-        {@const pdf = await pdfPromise}
+    {#if examPdf.selected}
+        <svelte:boundary>
+            {@const pdf = await loadPDFFromFile(examPdf.selected)}
+            {@const timetable = readTimetableData(pdf)}
 
-        {#if pdf}
-            <svelte:boundary>
-                {@const timetable = await readTimetableData(pdf)}
+            {#if timetable.success}
+                {@const data = timetable.output}
+                {@const gradeOptions = data.grades.map(grade => ({ value: String(grade), label: `Grade ${grade}` }))}
+                {@const examsForGrade = data.days.flatMap(day => day.sessions).flatMap(day => day.exams).filter(exam => exam.grade === Number(grade)).toSorted((a, b) => a.subject.localeCompare(b.subject))}
+                {@const subjectsForGrade = Array.from(new Set(examsForGrade.map(exam => exam.subject)))}
 
-                {#if timetable === null}
-                    No timetable data available
-                {:else if timetable.success}
-                    {@const data = timetable.output}
-                    {@const gradeOptions = data.grades.map(grade => ({ value: String(grade), label: `Grade ${grade}` }))}
-                    {@const examsForGrade = data.days.flatMap(day => day.sessions).flatMap(day => day.exams).filter(exam => exam.grade === Number(grade)).toSorted((a, b) => a.subject.localeCompare(b.subject))}
-                    {@const subjectsForGrade = Array.from(new Set(examsForGrade.map(exam => exam.subject)))}
+                <h2>Creating timetable for {data.schoolName}: {data.title}</h2>
 
-                    <h2>Creating timetable for {data.schoolName}: {data.title}</h2>
+                <SelectOutlined
+                    label='Grade'
+                    options={gradeOptions}
+                    bind:value={grade}
+                    width='100%'
+                    onchange={() => selectedSubjects = []}
+                />
 
-                    <SelectOutlined
-                        label='Grade'
-                        options={gradeOptions}
-                        bind:value={grade}
-                        width='100%'
-                        onchange={() => selectedSubjects = []}
-                    />
+                <fieldset>
+                    <legend>Subjects</legend>
 
-                    <fieldset>
-                        <legend>Subjects</legend>
+                    <div class='subject-actions'>
+                        <Chip
+                            variant='assist'
+                            disabled={subjectsForGrade.length === 0 || selectedSubjects.length === subjectsForGrade.length}
+                            onclick={() => selectedSubjects = subjectsForGrade}
+                            icon={PlaylistAddIcon}
+                        >
+                            Select all
+                        </Chip>
+                        <Chip
+                            variant='assist'
+                            disabled={selectedSubjects.length === 0}
+                            onclick={() => selectedSubjects = []}
+                            icon={RemoveIcon}
+                        >
+                            Clear
+                        </Chip>
+                    </div>
 
-                        <div class='subject-actions'>
-                            <Chip
-                                variant='assist'
-                                disabled={subjectsForGrade.length === 0 || selectedSubjects.length === subjectsForGrade.length}
-                                onclick={() => selectedSubjects = subjectsForGrade}
-                                icon={PlaylistAddIcon}
-                            >
-                                Select all
-                            </Chip>
-                            <Chip
-                                variant='assist'
-                                disabled={selectedSubjects.length === 0}
-                                onclick={() => selectedSubjects = []}
-                                icon={RemoveIcon}
-                            >
-                                Clear
-                            </Chip>
-                        </div>
+                    <ul class='subject-list'>
+                        {#each subjectsForGrade as subject}
+                            <li>
+                                <Chip
+                                    variant='input'
+                                    selected={selectedSubjects.includes(subject)}
+                                    onclick={() => selectedSubjects = selectedSubjects.includes(subject) ? selectedSubjects.filter((s: string) => s !== subject) : [...selectedSubjects, subject]}
+                                >
+                                    {subject}
+                                </Chip>
+                            </li>
+                        {/each}
+                    </ul>
+                </fieldset>
 
-                        <ul class='subject-list'>
-                            {#each subjectsForGrade as subject}
-                                <li>
-                                    <Chip
-                                        variant='input'
-                                        selected={selectedSubjects.includes(subject)}
-                                        onclick={() => selectedSubjects = selectedSubjects.includes(subject) ? selectedSubjects.filter((s: string) => s !== subject) : [...selectedSubjects, subject]}
-                                    >
-                                        {subject}
-                                    </Chip>
-                                </li>
-                            {/each}
-                        </ul>
-                    </fieldset>
+                {#key grade + selectedSubjects.join(',')}
+                    <svelte:boundary>
+                        {@const filteredData = createFilteredTimetableData(data)}
 
-                    {#key grade + selectedSubjects.join(',')}
-                        <svelte:boundary>
-                            {@const filteredData = createFilteredTimetableData(data)}
+                        {#if filteredData.days.length > 0}
                             {@const vectorData = await typst.vector({ mainContent: template, inputs: { data: JSON.stringify(filteredData) } })}
 
                             <div class='generated-timetable-header'>
@@ -200,43 +199,39 @@
                             {:else}
                                 <h2>No preview available</h2>
                             {/if}
+                        {/if}
 
-                            {#snippet pending()}
-                                <h2>Generating preview...</h2>
-                            {/snippet}
+                        {#snippet pending()}
+                            <h2>Generating preview...</h2>
+                        {/snippet}
 
-                            {#snippet failed(error)}
-                                <p>Error generating preview: {error.message ?? JSON.stringify(error)}</p>
-                            {/snippet}
-                        </svelte:boundary>
-                    {/key}
+                        {#snippet failed(error)}
+                            <p>Error generating preview: {error.message ?? JSON.stringify(error)}</p>
+                        {/snippet}
+                    </svelte:boundary>
+                {/key}
+            {:else}
+                <p>Error validating timetable data! This means that this timetable is either invalid, corrupted, or outdated. Issues found:</p>
 
-                    <div bind:this={previewCanvas}></div>
-                {:else}
-                    <p>Error loading timetable data!</p>
+                <ul>
                     {#each timetable.issues as issue}
-                        <p>{issue.message}</p>
+                        <li>
+                            <h3>{issue.message}</h3>
+                            <p>Path: {issue.path}</p>
+                        </li>
                     {/each}
-                {/if}
+                </ul>
+            {/if}
 
-                {#snippet pending()}
-                    <h2>Loading timetable...</h2>
-                {/snippet}
+            {#snippet pending()}
+                <h2>Loading...</h2>
+            {/snippet}
 
-                {#snippet failed(error)}
-                    <p>Error loading timetable: {error.message ?? JSON.stringify(error)}</p>
-                {/snippet}
-            </svelte:boundary>
-        {/if}
-
-        {#snippet pending()}
-            <h2>Loading...</h2>
-        {/snippet}
-
-        {#snippet failed(error)}
-            <p>Error loading PDF: {error.message ?? JSON.stringify(error)}</p>
-        {/snippet}
-    </svelte:boundary>
+            {#snippet failed(error)}
+                <p>Error loading timetable: {error.message ?? JSON.stringify(error)}</p>
+            {/snippet}
+        </svelte:boundary>
+    {/if}
 </main>
 
 <style>

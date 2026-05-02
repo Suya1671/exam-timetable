@@ -29,8 +29,6 @@ pub struct TimetableData {
 pub struct TimetableDay {
     /// The date of the day, in ISO 8601 format
     pub date: String,
-    /// The week number of the exam, based on the earliest week as week 1
-    pub week_number: u8,
     /// The sessions that occur on this day
     pub sessions: Vec<TimetableSession>,
 }
