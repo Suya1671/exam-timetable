@@ -109,7 +109,11 @@
                 const start = day.date.toZonedDateTime({ timeZone: userTZ, plainTime: exam.startTime })
                 const end = day.date.toZonedDateTime({ timeZone: userTZ, plainTime: exam.endTime })
 
-                const examName = exam.examName ?? hasMultipleExams(data, exam.subject) ? `Paper ${exam.paperNumber}` : ''
+                const examName =
+                    exam.examName ??
+                    (hasMultipleExams(data, exam.subject)
+                        ? `Paper ${exam.paperNumber}`
+                        : '')
 
                 // TODO: automatically create alarms
                 return {
