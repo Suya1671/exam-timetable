@@ -7,6 +7,8 @@
         "allowJs": true,
         "checkJs": true,
         "strict": true,
+        "noUncheckedIndexedAccess": true,
+        "useUnknownInCatchVariables": true,
         "outDir": "../../.moon/cache/types/packages/website",
         "sourceMap": true,
         "esModuleInterop": true,

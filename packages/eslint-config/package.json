@@ -12,11 +12,11 @@
     "dependencies": {
         "@antfu/eslint-config": "^8.2.0",
         "@eslint/js": "^10.0.1",
-        "eslint": "^10.2.1",
-        "globals": "^17.5.0",
+        "eslint": "^10.3.0",
+        "globals": "^17.6.0",
         "typescript-eslint": "^8.59.1"
     },
     "devDependencies": {
-        "@typescript/native-preview": "7.0.0-dev.20260429.1"
+        "@typescript/native-preview": "7.0.0-dev.20260502.1"
     }
 }

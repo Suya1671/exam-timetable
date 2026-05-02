@@ -133,6 +133,11 @@
 
           if session.at("exam", default: none) != none {
             let exam = session.exam
+
+            let startTime = parseDate(exam.startTime)
+            let endTime = parseDate(exam.startTime)
+            let timeFormatter(time) = time.display("[hour]:[minute]")
+
             cells.push(
               table.cell(fill: row-fill, block(spacing: 0pt)[
                 #text(size: 10pt)[
@@ -143,7 +148,7 @@
                     [P#exam.paperNumber]
                   }
                 ]\
-                #text(size: 8pt, fill: luma(30%))[#exam.startTime -- #exam.endTime]
+                #text(size: 8pt, fill: luma(30%))[#timeFormatter(startTime) -- #timeFormatter(endTime)]
               ]),
             )
           } else {

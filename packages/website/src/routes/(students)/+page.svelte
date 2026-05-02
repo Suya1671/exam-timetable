@@ -1,14 +1,17 @@
 <script lang='ts'>
     import type { PDFDocument } from '@cantoo/pdf-lib'
+    import type { ICalEventData } from 'ical-generator'
     import type { InferOutput } from 'valibot'
     import { examTimetableSchema } from '$lib'
     import setTypst from '$lib/setInitOptions'
+
     import TypstPreview from '$lib/TypstPreview.svelte'
+    import { Temporal } from '@js-temporal/polyfill'
 
     import RemoveIcon from '@ktibow/iconset-material-symbols/close-rounded'
     import PlaylistAddIcon from '@ktibow/iconset-material-symbols/playlist-add-rounded'
-
     import UploadIcon from '@ktibow/iconset-material-symbols/upload-rounded'
+    import ical, { ICalCalendarMethod, ICalEventBusyStatus, ICalEventClass, ICalEventStatus } from 'ical-generator'
     import { Button, Card, Chip, Icon, SelectOutlined } from 'm3-svelte'
     import { FileUpload } from 'melt/builders'
     import { safeParse } from 'valibot'
@@ -16,8 +19,10 @@
 
     const typst = await setTypst()
 
+    let pdfReset = $state(() => {})
     const examPdf = new FileUpload({
         accept: '.pdf',
+        onAccept: () => pdfReset(),
     })
 
     const loadPDFFromFile = async (file: File) => {
@@ -53,15 +58,10 @@
                     throw new Error(`Multiple exams found on ${day.date.toLocaleString()} session ${session.sessionNumber}. You cannot write multiple exams at the same time. Exams: ${exams.map(exam => `${exam.subject} P${exam.paperNumber}`).join(', ')}`)
                 }
                 const exam = exams[0]
+
                 return {
                     number: session.sessionNumber,
-                    exam: exam
-                        ? {
-                            ...exam,
-                            startTime: exam.startTime.toString({ smallestUnit: 'minutes' }),
-                            endTime: exam.endTime.toString({ smallestUnit: 'minutes' }),
-                        }
-                        : null,
+                    exam: exam ?? null,
                 }
             }),
         }))
@@ -81,7 +81,9 @@
 
     const exportPdf = async (data: ReturnType<typeof createFilteredTimetableData>) => {
         const pdf = await typst.pdf({ mainContent: template, inputs: { data: JSON.stringify(data) } })
-        const blob = new Blob([pdf], { type: 'application/pdf' })
+        if (!pdf) throw new Error('Failed to generate PDF')
+
+        const blob = new Blob([pdf as Uint8Array<ArrayBuffer>], { type: 'application/pdf' })
         const url = URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url
@@ -90,6 +92,62 @@
         link.click()
         document.body.removeChild(link)
         URL.revokeObjectURL(url)
+    }
+
+    const hasMultipleExams = (data: ReturnType<typeof createFilteredTimetableData>, subject: string) => {
+        return data.days.flatMap(day => day.sessions).filter(session => session.exam?.subject === subject).length > 1
+    }
+
+    function generateICS(data: ReturnType<typeof createFilteredTimetableData>) {
+        // TODO: rather embed the timezone into the generated main calendar
+        const userTZ = Temporal.Now.timeZoneId()
+
+        const events = data.days.flatMap((day) => {
+            return day.sessions.filter(session => session.exam).map((session) => {
+                const exam = session.exam!
+
+                const start = day.date.toZonedDateTime({ timeZone: userTZ, plainTime: exam.startTime })
+                const end = day.date.toZonedDateTime({ timeZone: userTZ, plainTime: exam.endTime })
+
+                const examName = exam.examName ?? hasMultipleExams(data, exam.subject) ? `Paper ${exam.paperNumber}` : ''
+
+                // TODO: automatically create alarms
+                return {
+                    id: `${exam.examId}-${exam.sessionId}@exam-timetable`,
+                    start,
+                    end,
+                    location: data.schoolName,
+                    class: ICalEventClass.PUBLIC,
+                    status: ICalEventStatus.CONFIRMED,
+                    busystatus: ICalEventBusyStatus.BUSY,
+                    summary: `${exam.subject} ${examName}`,
+                    description: exam.examName ?? '',
+                    categories: [{ name: 'Exam' }],
+                } satisfies ICalEventData
+            })
+        })
+
+        const cal = ical({
+            method: ICalCalendarMethod.PUBLISH,
+            prodId: '-//Exam Timetable//EN',
+            name: `${data.title}`,
+            description: `Exams for ${data.title} at ${data.schoolName}`,
+            url: 'https://timetable.wobbl.in',
+            events,
+        })
+
+        return cal.toString()
+    }
+
+    const exportToCalendar = (data: ReturnType<typeof createFilteredTimetableData>) => {
+        const ics = generateICS(data)
+        const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+
+        window.location.href = url
+
+        // Cleanup. No clue if theres a better way to do this
+        setTimeout(() => URL.revokeObjectURL(url), 5000)
     }
 </script>
 
@@ -119,13 +177,13 @@
     </Card>
 
     {#if examPdf.selected}
-        <svelte:boundary>
+        <svelte:boundary onerror={(_, reset) => (pdfReset = reset)}>
             {@const pdf = await loadPDFFromFile(examPdf.selected)}
             {@const timetable = readTimetableData(pdf)}
 
             {#if timetable.success}
                 {@const data = timetable.output}
-                {@const gradeOptions = data.grades.map(grade => ({ value: String(grade), label: `Grade ${grade}` }))}
+                {@const gradeOptions = data.grades.map(grade => ({ value: String(grade), text: `Grade ${grade}` }))}
                 {@const examsForGrade = data.days.flatMap(day => day.sessions).flatMap(day => day.exams).filter(exam => exam.grade === Number(grade)).toSorted((a, b) => a.subject.localeCompare(b.subject))}
                 {@const subjectsForGrade = Array.from(new Set(examsForGrade.map(exam => exam.subject)))}
 
@@ -189,9 +247,14 @@
                                     <p>note: not fully accurate to final output</p>
                                 </hgroup>
 
-                                <Button onclick={() => exportPdf(filteredData)}>
-                                    Export PDF
-                                </Button>
+                                <div>
+                                    <Button onclick={() => exportToCalendar(filteredData)}>
+                                        Export to Calendar
+                                    </Button>
+                                    <Button onclick={() => exportPdf(filteredData)}>
+                                        Export PDF
+                                    </Button>
+                                </div>
                             </div>
 
                             {#if vectorData}
@@ -299,6 +362,11 @@
 
         p {
             @apply --m3-label-small;
+        }
+
+        div {
+            display: flex;
+            gap: 0.5rem;
         }
     }
 </style>

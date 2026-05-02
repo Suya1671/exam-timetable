@@ -14,11 +14,11 @@
 
     let previewCanvasContainer: HTMLDivElement | null = $state(null)
 
-    $effect(async () => {
+    $effect(() => {
         if (!previewCanvasContainer)
             return
 
-        await typst.canvas(previewCanvasContainer, { vectorData })
+        typst.canvas(previewCanvasContainer, { vectorData })
     })
 </script>
 
