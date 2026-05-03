@@ -34,7 +34,7 @@
     const { current: errors } = $derived(useStore(field.store, state => state.meta.errors))
 </script>
 
-<div style='display: flex;flex-direction: column;gap: 0.25rem;'>
+<div class='container'>
     <TextField
         name={field.name}
         bind:value={field.state.value}
@@ -70,3 +70,11 @@
         {/if}
     </div>
 </div>
+
+<style>
+    .container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+</style>

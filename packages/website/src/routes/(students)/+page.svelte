@@ -1,5 +1,5 @@
 <script lang='ts'>
-    import type { PDFDocument } from '@cantoo/pdf-lib'
+    import { FieldAlreadyExistsError, type PDFDocument } from '@cantoo/pdf-lib'
     import type { ICalEventData } from 'ical-generator'
     import type { InferOutput } from 'valibot'
     import { examTimetableSchema } from '$lib'
@@ -12,7 +12,7 @@
     import PlaylistAddIcon from '@ktibow/iconset-material-symbols/playlist-add-rounded'
     import UploadIcon from '@ktibow/iconset-material-symbols/upload-rounded'
     import ical, { ICalCalendarMethod, ICalEventBusyStatus, ICalEventClass, ICalEventStatus } from 'ical-generator'
-    import { Button, Card, Chip, Icon, SelectOutlined } from 'm3-svelte'
+    import { Button, Card, Chip, Icon, SelectOutlined, TextField } from 'm3-svelte'
     import { FileUpload } from 'melt/builders'
     import { safeParse } from 'valibot'
     import template from './student_template.typ?raw'
@@ -48,6 +48,7 @@
 
     let grade = $state('')
     let selectedSubjects = $state<string[]>([])
+    let name = $state('')
 
     const createFilteredTimetableData = (timetable: InferOutput<typeof examTimetableSchema>) => {
         const days = timetable.days.map(day => ({
@@ -75,6 +76,7 @@
             title: timetable.title,
             schoolName: timetable.schoolName,
             grade: Number(grade),
+            name,
             days: filteredDays,
         }
     }
@@ -194,13 +196,26 @@
 
                 <h2>Creating timetable for {data.schoolName}: {data.title}</h2>
 
-                <SelectOutlined
-                    label='Grade'
-                    options={gradeOptions}
-                    bind:value={grade}
-                    width='100%'
-                    onchange={() => selectedSubjects = []}
-                />
+                <fieldset>
+                    <legend>User Information</legend>
+
+                    <TextField
+                        name='name'
+                        label='Name'
+                        bind:value={name}
+                        type='text'
+                        required
+                    >
+                    </TextField>
+
+                    <SelectOutlined
+                        label='Grade'
+                        options={gradeOptions}
+                        bind:value={grade}
+                        width='100%'
+                        onchange={() => selectedSubjects = []}
+                    />
+                </fieldset>
 
                 <fieldset>
                     <legend>Subjects</legend>
